@@ -2217,6 +2217,31 @@ document.getElementById('busca').addEventListener('input',debounce(()=>{
 },220));
 // initialise Status dropdown
 sdRender('Status','');
+
+// ─── AUTO-LOAD: busca dados.csv automaticamente ───────────────────────────────
+(async function autoLoad(){
+  // Só executa quando hospedado (não file://) ou em localhost
+  const isLocal = location.protocol === 'file:';
+  const csvName = 'dados.csv';
+  const url = isLocal ? null : (new URL(csvName, location.href)).href;
+  if(!url) return; // em file:// mantém o comportamento de drop manual
+
+  try {
+    showLoading('Carregando dados atualizados…');
+    const res = await fetch(url, { cache: 'no-store' });
+    if(!res.ok) { hideLoading(); return; } // CSV não encontrado → mantém tela de drop
+    const text = await res.text();
+    await new Promise(r => setTimeout(r, 0));
+    showLoading('Processando dados…');
+    await new Promise(r => setTimeout(r, 0));
+    const rows = parseCSV(text);
+    hideLoading();
+    if(rows.length) build(rows, csvName);
+  } catch(e) {
+    hideLoading();
+    // Se fetch falhar (offline, CORS, etc.) mantém tela de drop manual
+  }
+})();
 </script>
 </body>
 </html>
