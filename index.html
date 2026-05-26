@@ -573,6 +573,27 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 }
 .btn-kpi-close:hover{background:var(--acc2)}
 
+/* ══ PAINEL PRIORIDADES ══════════════════════════════════════════ */
+.prior-panel-wrap{padding:4px 0}
+.prior-panel-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad-lg);padding:18px 20px}
+.prior-item{
+  display:flex;align-items:flex-start;gap:14px;
+  background:var(--bg2);border:1px solid var(--border2);
+  border-radius:var(--rad-lg);padding:14px 18px;margin-bottom:8px;
+  border-left:4px solid var(--amber);
+}
+.prior-num{font-size:18px;font-weight:900;color:var(--amber);font-family:'JetBrains Mono',monospace;min-width:28px;text-align:right;padding-top:2px}
+.prior-body{flex:1;min-width:0}
+.prior-ped{font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:800;color:var(--acc)}
+.prior-meta{font-size:12px;color:var(--text3);margin-top:3px}
+.prior-itens{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px}
+.prior-pct{display:flex;align-items:center;gap:8px;margin-top:8px}
+.prior-not-found{
+  font-size:14px;color:var(--text3);font-family:'JetBrains Mono',monospace;
+  background:var(--bg3);border:1px dashed var(--border2);
+  border-radius:var(--rad);padding:8px 14px;margin-bottom:6px;
+}
+
 /* ══ PAINEL CARGA ════════════════════════════════════════════════ */
 .carga-panel-wrap{padding:4px 0}
 .carga-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap}
@@ -706,7 +727,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
   .vtoggle{
     width:100%;
     display:grid;
-    grid-template-columns:repeat(4,1fr);
+    grid-template-columns:repeat(5,1fr);
     gap:0;
     border-radius:var(--rad);
     overflow:hidden;
@@ -832,6 +853,12 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
         <div style="position:relative;display:inline-flex;align-items:center;max-width:220px;width:220px">
           <input type="text" id="busca" class="f-input" placeholder="🔍  Digitar nº pedido…" style="width:100%;padding-right:32px">
           <button id="buscaClear" onclick="buscaClear()" title="Limpar busca" style="display:none;position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:2px 4px;border-radius:4px;transition:.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+        </div>
+
+        <!-- Busca por produto -->
+        <div style="position:relative;display:inline-flex;align-items:center;max-width:220px;width:220px">
+          <input type="text" id="buscaProduto" class="f-input" placeholder="🔎  Buscar produto…" style="width:100%;padding-right:32px">
+          <button id="buscaProdutoClear" onclick="buscaProdutoClear()" title="Limpar busca produto" style="display:none;position:absolute;right:8px;background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:2px 4px;border-radius:4px;transition:.15s" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text3)'">✕</button>
         </div>
 
         <!-- Pedido -->
@@ -962,6 +989,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
           <button class="vbtn" id="vbTabela" onclick="setView('tabela')">Tabela</button>
           <button class="vbtn" id="vbKpiPanel" onclick="setView('kpipanel')">📊 KPIs</button>
           <button class="vbtn" id="vbCargaPanel" onclick="setView('cargapanel')">📦 Carga</button>
+          <button class="vbtn" id="vbPrioridades" onclick="setView('prioridades')">⭐ Prioridades</button>
         </div>
       </div>
     </div>
@@ -1021,6 +1049,27 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
         </div>
       </div>
     </div>
+
+    <!-- PAINEL PRIORIDADES -->
+    <div id="vPrioridades" style="display:none">
+      <div class="prior-panel-wrap">
+        <div class="prior-panel-header">
+          <div>
+            <div style="font-size:17px;font-weight:800;color:var(--text)">⭐ Prioridades de Produção</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:4px">Suba um arquivo TXT com os números dos pedidos (um por linha)</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <label class="btn-s" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+              📂 Carregar TXT
+              <input type="file" id="priorTxt" accept=".txt" style="display:none" onchange="priorCarregar(this)">
+            </label>
+            <button class="btn-s" onclick="priorLimpar()">🗑 Limpar</button>
+            <span id="priorInfo" style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace"></span>
+          </div>
+        </div>
+        <div id="priorLista" style="margin-top:16px"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1056,7 +1105,7 @@ const __VERSION__ = "1.5";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "26/05/2026 às 12:26";
+const __LAST_UPDATE__ = "26/05/2026 às 09:14";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
@@ -1099,6 +1148,11 @@ function parseSetor(val){
   if(vu.includes('CANCELADO'))return{tipo:'skip',display:'—'};
   if(isDataInvalida(v))return{tipo:'pend',display:'Pendente'};
   if(/^00?[\/\-]/.test(v))return{tipo:'pend',display:'Pendente'};
+  // Ajuste 2: formato parcial N*DD/MM — ex: "9*07/10"
+  const mParcial=v.match(/^(\d+)\*(.+)$/);
+  if(mParcial){
+    return{tipo:'done',display:mParcial[2],parcial:parseInt(mParcial[1])};
+  }
   if(v.includes('/')||v.includes('-'))return{tipo:'done',display:v};
   if(v)return{tipo:'done',display:v};
   return{tipo:'skip',display:'—'};
@@ -1328,6 +1382,8 @@ function matchDataCargaFn(p,ini,fim){
 
 function render(){
   const q=(document.getElementById('busca').value||'').toLowerCase().trim();
+  // Ajuste 1: busca por produto
+  const qProd=(document.getElementById('buscaProduto')?.value||'').toLowerCase().trim();
   const fPedido=_sd.Pedido.values;
   const fCls=_sd.Class.values;
   const fCliente=_sd.Cliente.values;
@@ -1338,8 +1394,18 @@ function render(){
   const dcFimMs=parseDateToMs(document.getElementById('dataCargaFim')?.value||'');
   const matchDataCarga=p=>matchDataCargaFn(p,dcInicioMs,dcFimMs);
 
+  // Ajuste 1: filtro por produto — só passa pedidos que tenham ao menos 1 item com match
+  function matchProd(p){
+    if(!qProd) return true;
+    return p.itens.some(it=>
+      (it.item||'').toLowerCase().includes(qProd)||
+      (it.comp||'').toLowerCase().includes(qProd)
+    );
+  }
+
   const peds=PEDIDOS.filter(p=>{
     if(q&&!p.pedido.toLowerCase().includes(q))return false;
+    if(!matchProd(p))return false;
     if(fPedido.size>0&&!fPedido.has(p.pedido))return false;
     if(fCls.size>0&&!fCls.has(p.class_))return false;
     if(fCliente.size>0&&!fCliente.has(p.cliente))return false;
@@ -1354,6 +1420,9 @@ function render(){
     if(!matchDataCarga(p))return false;
     return true;
   });
+
+  // Ajuste 4: se filtro "só pendentes" ativo, marcar pedidos para exibir apenas itens pendentes
+  const somentePend=fSt.size===1&&fSt.has('pend');
 
   // ── Compatibilidade entre filtros ────────────────────────────────────────
   function pedsExcluding(skipName){
@@ -1455,15 +1524,15 @@ function render(){
   document.getElementById('sub').textContent=
     `${peds.length} pedido${peds.length!==1?'s':''} encontrado${peds.length!==1?'s':''}`;
 
-  // Ajuste 2: se filtro de status = somente pendentes E há filtro de data, ordena do mais concluído ao menos
+  // Ordenação pendentes: do mais concluído ao menos
   let pedsOrdenados=peds;
-  if(fSt.size===1&&fSt.has('pend')){
+  if(somentePend){
     pedsOrdenados=[...peds].sort((a,b)=>prog(b).pct-prog(a).pct);
   }
 
   pageCards=0;pageTabela=0;
-  if(VIEW==='cards')renderCards(pedsOrdenados);
-  else if(VIEW==='tabela')renderTabela(pedsOrdenados);
+  if(VIEW==='cards')renderCards(pedsOrdenados,somentePend,qProd);
+  else if(VIEW==='tabela')renderTabela(pedsOrdenados,somentePend,qProd);
   else if(VIEW==='cargapanel')renderCargaPanel();
   else renderKpiPanel();
 }
@@ -1543,7 +1612,7 @@ function renderKpiPanel(){
 }
 
 // ─── renderCards ──────────────────────────────────────────────────────────────
-function renderCards(peds){
+function renderCards(peds,somentePend,qProd){
   const grid=document.getElementById('pgrid');
   if(!peds.length){
     grid.innerHTML='<div style="color:var(--text3);font-size:14px;padding:20px">Nenhum pedido encontrado.</div>';
@@ -1558,15 +1627,15 @@ function renderCards(peds){
     const el=document.createElement('div');
     el.className='pcard'+(pct===100?' pcard-ok':total>0?' pcard-pend':'');
     el.dataset.ped=p.pedido;
-    el.innerHTML=cardHTML(p,done,total,pct);
+    el.innerHTML=cardHTML(p,done,total,pct,somentePend,qProd);
     el.addEventListener('click',()=>mOpen(p.pedido));
     frag.appendChild(el);
   }
   grid.innerHTML='';grid.appendChild(frag);
-  renderPagination('pgCards',pageCards,totalPag,(p)=>{pageCards=p;renderCards(peds);});
+  renderPagination('pgCards',pageCards,totalPag,(p)=>{pageCards=p;renderCards(peds,somentePend,qProd);});
 }
 
-function cardHTML(p,done,total,pct){
+function cardHTML(p,done,total,pct,somentePend,qProd){
   const metaParts=[];
   if(p.cliente)metaParts.push(`<span><span class='meta-label'>CLIENTE</span>${p.cliente}</span>`);
   if(p.class_)metaParts.push(`<span><span class='meta-label'>CLASSIF.</span>${p.class_}</span>`);
@@ -1574,7 +1643,15 @@ function cardHTML(p,done,total,pct){
   if(p.n)metaParts.push(`<span><span class='meta-label'>Nº</span>${p.n}</span>`);
   metaParts.push(`<span><span class='meta-label'>ITENS</span>${p.itens.length}</span>`);
 
-  const itensHTML=p.itens.map(it=>{
+  // Ajuste 4: filtrar apenas itens pendentes se somentePend ativo
+  // Ajuste 1: filtrar itens que batem com busca de produto
+  let itensVisiveis=p.itens;
+  if(somentePend) itensVisiveis=itensVisiveis.filter(it=>progItem(it).pct<100);
+  if(qProd) itensVisiveis=itensVisiveis.filter(it=>
+    (it.item||'').toLowerCase().includes(qProd)||(it.comp||'').toLowerCase().includes(qProd)
+  );
+
+  const itensHTML=itensVisiveis.map(it=>{
     const{done:dIt,total:tIt,pct:pctIt,embDone:itEmbDone}=progItem(it);
     const pctItColor=pctIt===100?'var(--green)':pctIt>0?'var(--acc)':'var(--red)';
     const badges=SETORES.map(s=>{
@@ -1614,7 +1691,7 @@ function cardHTML(p,done,total,pct){
     ${p.class_?`<div class="pcard-class">${p.class_}</div>`:''}
   </div>
   <div class="pcard-meta">${metaParts.join('')}</div>
-  <div class="pcard-body">${itensHTML}</div>
+  <div class="pcard-body">${itensHTML||'<div style="color:var(--text3);font-size:13px;padding:8px 0">Nenhum item pendente.</div>'}</div>
   <div class="pcard-prog">
     <div class="prog-track"><div class="prog-fill" style="width:${pct}%;background:${pctColor}"></div></div>
     <div class="prog-lbl"><span>${done} de ${total} etapas${embLabel}</span><span class="pct-big" style="color:${pctColor}">${pct}%</span></div>
@@ -1642,9 +1719,15 @@ function sortItens(itens){
 }
 
 // ─── renderTabela ─────────────────────────────────────────────────────────────
-function renderTabela(peds){
+function renderTabela(peds,somentePend,qProd){
   const body=document.getElementById('tbody');
   let allItens=peds.flatMap(p=>p.itens.map(it=>({...it,_ped:p})));
+  // Ajuste 4: exibir apenas itens pendentes quando filtro ativo
+  if(somentePend) allItens=allItens.filter(it=>progItem(it).pct<100);
+  // Ajuste 1: filtrar por produto na tabela também
+  if(qProd) allItens=allItens.filter(it=>
+    (it.item||'').toLowerCase().includes(qProd)||(it.comp||'').toLowerCase().includes(qProd)
+  );
   allItens=sortItens(allItens);
   if(!allItens.length){
     body.innerHTML=`<tr><td colspan="100" style="text-align:center;color:var(--text3);padding:24px;font-size:14px">Nenhum resultado.</td></tr>`;
@@ -1666,8 +1749,12 @@ function renderTabela(peds){
       const date=st.tipo==='done'?st.display:'';
       const tip=embOverride?`${s.label}: ok por emb`:st.tipo==='done'?`${s.label}: ${st.display}`:st.tipo==='pend'?`${s.label}: pendente`:`${s.label}: não passa`;
       const dateParts=date?date.split('/'):[];
+      // Ajuste 2: contador parcial N/Total abaixo da data
+      const parcialHtml=(st.parcial&&it.qtd)
+        ?`<span style="display:block;font-size:10px;font-weight:800;line-height:1.1;color:var(--amber);font-family:'JetBrains Mono',monospace">${st.parcial}/${(it.qtd||'').replace(/\.0+$/,'')}</span>`
+        :'';
       const dateHtml=date
-        ?`<span style="display:block;font-size:17px;font-weight:800;line-height:1.2;font-family:'JetBrains Mono',monospace">${dateParts[0]||date}</span><span style="display:block;font-size:17px;font-weight:700;line-height:1.2;font-family:'JetBrains Mono',monospace;opacity:.85">${dateParts[1]||''}</span>`
+        ?`<span style="display:block;font-size:17px;font-weight:800;line-height:1.2;font-family:'JetBrains Mono',monospace">${dateParts[0]||date}</span><span style="display:block;font-size:17px;font-weight:700;line-height:1.2;font-family:'JetBrains Mono',monospace;opacity:.85">${dateParts[1]||''}</span>${parcialHtml}`
         :`<span style="font-size:17px">${ico}</span>`;
       return`<td class="td-setor"><span class="tpill ${cls}" title="${tip}" style="width:56px;min-height:58px;gap:0px">${dateHtml}</span></td>`;
     }).join('');
@@ -1815,14 +1902,16 @@ function setView(v){
   document.getElementById('vTabela').style.display=v==='tabela'?'block':'none';
   document.getElementById('vKpiPanel').style.display=v==='kpipanel'?'block':'none';
   document.getElementById('vCargaPanel').style.display=v==='cargapanel'?'block':'none';
+  document.getElementById('vPrioridades').style.display=v==='prioridades'?'block':'none';
   document.getElementById('vbCards').classList.toggle('on',v==='cards');
   document.getElementById('vbTabela').classList.toggle('on',v==='tabela');
   document.getElementById('vbKpiPanel').classList.toggle('on',v==='kpipanel');
   document.getElementById('vbCargaPanel').classList.toggle('on',v==='cargapanel');
-  // hide sub-bar legend when in KPI panel or Carga panel view
-  document.querySelector('.sub-bar').style.display=(v==='kpipanel'||v==='cargapanel')?'none':'flex';
+  document.getElementById('vbPrioridades').classList.toggle('on',v==='prioridades');
+  document.querySelector('.sub-bar').style.display=(v==='kpipanel'||v==='cargapanel'||v==='prioridades')?'none':'flex';
   if(v==='kpipanel')renderKpiPanel();
   else if(v==='cargapanel')renderCargaPanel();
+  else if(v==='prioridades')priorRender();
   else render();
 }
 
@@ -2451,6 +2540,142 @@ document.getElementById('busca').addEventListener('input',debounce(()=>{
 },220));
 // initialise Status dropdown
 sdRender('Status','');
+
+function buscaProdutoClear(){
+  const inp=document.getElementById('buscaProduto');
+  inp.value='';
+  document.getElementById('buscaProdutoClear').style.display='none';
+  inp.focus();
+  render();
+}
+document.getElementById('buscaProduto').addEventListener('input',debounce(()=>{
+  document.getElementById('buscaProdutoClear').style.display=document.getElementById('buscaProduto').value?'block':'none';
+  render();
+},220));
+
+// ─── PAINEL PRIORIDADES ───────────────────────────────────────────────────────
+let _priorGrupos=[]; // [{titulo, pedidos:[{num,extra}]}]
+
+function priorCarregar(input){
+  const file=input.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    const texto=e.target.result;
+    const linhas=texto.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
+
+    // Parse: linhas de cabeçalho (ex: "Pedidos de quarta feira 27/05")
+    // linhas de pedido (ex: "114984 carga 3304" ou só "114984")
+    _priorGrupos=[];
+    let grupoAtual=null;
+
+    for(const linha of linhas){
+      // Detecta cabeçalho: contém palavra-chave de dia ou data
+      const isHeader=/pedidos?\s+de\s+/i.test(linha)||/^\d{1,2}\/\d{1,2}/.test(linha);
+      if(isHeader){
+        grupoAtual={titulo:linha,pedidos:[]};
+        _priorGrupos.push(grupoAtual);
+        continue;
+      }
+      // Extrai número do pedido — pega o primeiro token numérico da linha
+      const m=linha.match(/^(\S+)/);
+      if(m){
+        const num=m[1].replace(/[^\w]/g,'');
+        if(num){
+          if(!grupoAtual){grupoAtual={titulo:'Sem data',pedidos:[]};_priorGrupos.push(grupoAtual);}
+          // Guarda número e info extra (ex: "carga 3304")
+          const extra=linha.slice(m[1].length).trim();
+          grupoAtual.pedidos.push({num,extra});
+        }
+      }
+    }
+    input.value='';
+    priorRender();
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+function priorLimpar(){
+  _priorGrupos=[];
+  priorRender();
+}
+
+function priorRender(){
+  const info=document.getElementById('priorInfo');
+  const lista=document.getElementById('priorLista');
+
+  if(!_priorGrupos.length){
+    if(info) info.textContent='';
+    lista.innerHTML=`<div style="color:var(--text3);font-size:14px;padding:40px;text-align:center;background:var(--bg2);border:1px dashed var(--border2);border-radius:var(--rad-lg)">
+      Nenhuma prioridade carregada.<br>
+      <span style="font-size:12px;margin-top:6px;display:block">Suba um arquivo TXT com os pedidos agrupados por data.</span>
+    </div>`;
+    return;
+  }
+
+  const totalPeds=_priorGrupos.reduce((a,g)=>a+g.pedidos.length,0);
+  if(info) info.textContent=`${totalPeds} pedido${totalPeds!==1?'s':''} · ${_priorGrupos.length} grupo${_priorGrupos.length!==1?'s':''}`;
+
+  let globalIdx=0;
+  const html=_priorGrupos.map(grupo=>{
+    const itensHtml=grupo.pedidos.map(({num,extra})=>{
+      globalIdx++;
+      const idx=globalIdx;
+      // Busca pedido nos dados — tenta match exato ou com prefixo PED
+      const p=PEDIDOS.find(x=>
+        x.pedido===num||
+        x.pedido===('PED'+num)||
+        x.pedido.toLowerCase()===num.toLowerCase()||
+        x.pedido.replace(/^PED/i,'')===num
+      );
+      if(!p){
+        return`<div class="prior-not-found">
+          <span style="color:var(--text3);margin-right:8px;font-weight:700">#${idx}</span>
+          <span style="color:var(--red);font-family:'JetBrains Mono',monospace">${num}</span>
+          ${extra?`<span style="color:var(--text3);font-size:12px;margin-left:6px">${extra}</span>`:''}
+          <span style="color:var(--text3);font-size:12px;margin-left:8px">— não encontrado</span>
+        </div>`;
+      }
+      const{done,total,pct}=prog(p);
+      const pctColor=pct===100?'var(--green)':pct>0?'var(--acc)':'var(--red)';
+      const meta=[p.cliente,p.class_].filter(Boolean).join(' · ');
+      const itensPend=p.itens.filter(it=>progItem(it).pct<100);
+      const itensResumo=itensPend.slice(0,3).map(it=>
+        `<span style="font-size:11px;background:var(--red-bg);color:var(--red);border:1px solid var(--red-border);border-radius:4px;padding:2px 8px;font-family:'JetBrains Mono',monospace;white-space:nowrap">${it.item||'—'}</span>`
+      ).join('');
+      const mais=itensPend.length>3?`<span style="font-size:11px;color:var(--text3)">+${itensPend.length-3} mais</span>`:'';
+      return`<div class="prior-item" onclick="mOpen('${p.pedido.replace(/'/g,"\\'")}')">
+        <div class="prior-num">${idx}</div>
+        <div class="prior-body">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <span class="prior-ped">${p.pedido}</span>
+            ${extra?`<span style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace">${extra}</span>`:''}
+          </div>
+          ${meta?`<div class="prior-meta">${meta}</div>`:''}
+          ${itensPend.length?`<div class="prior-itens">${itensResumo}${mais}</div>`
+            :`<div style="font-size:11px;color:var(--green);margin-top:6px;font-weight:700">✓ Concluído</div>`}
+          <div class="prior-pct">
+            <span style="font-size:14px;font-weight:800;color:${pctColor};font-family:'JetBrains Mono',monospace">${pct}%</span>
+            <div style="flex:1;height:5px;background:var(--bg4);border-radius:3px;overflow:hidden">
+              <div style="width:${pct}%;height:100%;background:${pctColor};border-radius:3px"></div>
+            </div>
+            <span style="font-size:11px;color:var(--text3)">${done}/${total}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return`<div style="margin-bottom:20px">
+      <div style="font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--acc);background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rad);padding:8px 14px;margin-bottom:8px">
+        📅 ${grupo.titulo}
+        <span style="font-size:11px;color:var(--text3);font-weight:600;margin-left:8px">${grupo.pedidos.length} pedido${grupo.pedidos.length!==1?'s':''}</span>
+      </div>
+      ${itensHtml}
+    </div>`;
+  }).join('');
+
+  lista.innerHTML=html;
+}
 
 // ─── AUTO-LOAD: busca dados.csv automaticamente ───────────────────────────────
 (async function autoLoad(){
