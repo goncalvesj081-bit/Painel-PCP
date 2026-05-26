@@ -790,6 +790,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
   <!-- Linha 1: logo + relógio -->
   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:9px 14px">
     <div class="logo"><span class="logo-dot"></span>Controle de Produção</div>
+    <span id="appVersion" style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--text3);background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:2px 7px;letter-spacing:.04em;flex-shrink:0"></span>
     <div id="realtimeClock" style="flex-shrink:0;text-align:right">
       <span id="clockTime" style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:700;color:var(--text);display:block;line-height:1.2">--:--:--</span>
       <span id="clockDate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block">---</span>
@@ -1050,20 +1051,28 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 </div>
 
 <script>
-// ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ──────────
-// NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "26/05/2026 às 07:45";
-// ────────────────────────────────────────────────────────────────────────────────
+// ─── VERSÃO ──────────────────────────────────────────────────────────────────
+const __VERSION__ = "1.5";
 
-(function showLastUpdate(){
+// ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
+// NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
+const __LAST_UPDATE__ = "26/05/2026 às 07:51";
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Roda após o DOM estar pronto
+document.addEventListener('DOMContentLoaded', function(){
+  // Versão sempre visível no header
+  const verEl=document.getElementById('appVersion');
+  if(verEl) verEl.textContent=`v${__VERSION__}`;
+
+  // Data de atualização — só aparece se injetada pelo Python
   const el=document.getElementById('lastUpdateInfo');
   const bar=document.getElementById('headerInfoBar');
-  if(!el) return;
-  if(__LAST_UPDATE__){
-    el.textContent=`🕐 Atualizado em: ${__LAST_UPDATE__}`;
+  if(el && __LAST_UPDATE__){
+    el.textContent=`🕐 Atualizado: ${__LAST_UPDATE__}`;
     if(bar) bar.style.display='flex';
   }
-})();
+});
 const SETORES=[
   {key:'fusao',label:'Fus.'},{key:'tub',label:'Tub.'},{key:'pint',label:'Pin.'},
   {key:'tec',label:'Tec.'},{key:'mad',label:'Mad.'},{key:'atelie',label:'Ate.'},
