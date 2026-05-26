@@ -1224,7 +1224,7 @@ const __VERSION__ = "1.6";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "26/05/2026 às 18:27";
+const __LAST_UPDATE__ = "26/05/2026 às 18:30";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
@@ -3055,11 +3055,17 @@ function priorRenderDetalhe(){
   const csvUrl  = base + 'dados.csv';
   const txtUrl  = base + 'prioridades.txt';
 
+  console.log('[AutoLoad] CSV URL:', csvUrl);
+  console.log('[AutoLoad] TXT URL:', txtUrl);
+
   // Dispara os dois fetches em paralelo (só o fetch de rede, não o processamento)
   const [csvRes, txtRes] = await Promise.allSettled([
     fetch(csvUrl, { cache: 'no-store' }),
     fetch(txtUrl, { cache: 'no-store' }),
   ]);
+
+  console.log('[AutoLoad] CSV status:', csvRes.status, csvRes.value?.status, csvRes.value?.ok);
+  console.log('[AutoLoad] TXT status:', txtRes.status, txtRes.value?.status, txtRes.value?.ok);
 
   // ── CSV primeiro — PEDIDOS precisa estar populado antes do TXT ───────────
   const csvOk = csvRes.status === 'fulfilled' && csvRes.value.ok;
@@ -3073,18 +3079,21 @@ function priorRenderDetalhe(){
       const rows = parseCSV(text);
       hideLoading();
       if(rows.length) build(rows, 'dados.csv');
-    }catch(e){ hideLoading(); }
+    }catch(e){ hideLoading(); console.error('[AutoLoad] Erro CSV:', e); }
   }
 
   // ── TXT de prioridades — carregado APÓS o build() para cruzar com PEDIDOS ─
   const txtOk = txtRes.status === 'fulfilled' && txtRes.value.ok;
+  console.log('[AutoLoad] txtOk:', txtOk, '| PEDIDOS após build:', typeof PEDIDOS !== 'undefined' ? PEDIDOS.length : 'undefined');
   if(txtOk){
     try{
       const texto = await txtRes.value.text();
+      console.log('[AutoLoad] TXT carregado, primeiros 200 chars:', texto.slice(0,200));
       priorCarregarTexto(texto);
-      // Se a view já estiver em prioridades, re-renderiza
       if(typeof VIEW !== 'undefined' && VIEW === 'prioridades') priorRender();
-    }catch(e){}
+    }catch(e){ console.error('[AutoLoad] Erro TXT:', e); }
+  } else {
+    console.warn('[AutoLoad] prioridades.txt não carregado — verifique se o arquivo existe no repositório e o nome está correto (minúsculo).');
   }
 })();
 </script>
