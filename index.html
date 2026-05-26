@@ -1050,6 +1050,20 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 </div>
 
 <script>
+// ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ──────────
+// NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
+const __LAST_UPDATE__ = "";
+// ────────────────────────────────────────────────────────────────────────────────
+
+(function showLastUpdate(){
+  const el=document.getElementById('lastUpdateInfo');
+  const bar=document.getElementById('headerInfoBar');
+  if(!el) return;
+  if(__LAST_UPDATE__){
+    el.textContent=`🕐 Atualizado em: ${__LAST_UPDATE__}`;
+    if(bar) bar.style.display='flex';
+  }
+})();
 const SETORES=[
   {key:'fusao',label:'Fus.'},{key:'tub',label:'Tub.'},{key:'pint',label:'Pin.'},
   {key:'tec',label:'Tec.'},{key:'mad',label:'Mad.'},{key:'atelie',label:'Ate.'},
@@ -1241,24 +1255,6 @@ function build(rows,fname,currentFile){
   // Mostrar barra de info só após carregar arquivo
   const infoBar=document.getElementById('headerInfoBar');
   if(infoBar) infoBar.style.display='flex';
-
-  // Ajuste 5: data de modificação real do CSV (file.lastModified = quando foi salvo no disco)
-  (function setLastUpdate(file){
-    const el=document.getElementById('lastUpdateInfo');
-    if(!el) return;
-    // file.lastModified existe e é confiável quando o usuário seleciona o arquivo localmente.
-    // No GitHub Pages o arquivo HTML é estático, mas o CSV é sempre carregado pelo usuário —
-    // então file.lastModified reflete quando o CSV foi gerado/salvo, não o momento do upload.
-    if(!file||!file.lastModified){ el.style.display='none'; return; }
-    const ts=new Date(file.lastModified);
-    const d=String(ts.getDate()).padStart(2,'0');
-    const mo=String(ts.getMonth()+1).padStart(2,'0');
-    const y=ts.getFullYear();
-    const h=String(ts.getHours()).padStart(2,'0');
-    const mi=String(ts.getMinutes()).padStart(2,'0');
-    el.textContent=`🕐 CSV salvo em: ${d}/${mo}/${y} às ${h}:${mi}`;
-    el.style.display='';
-  })(currentFile);
 
   const pedidos=[...new Set(PEDIDOS.map(p=>p.pedido).filter(Boolean))].sort();
   sdBuild('Pedido',pedidos,v=>v,'Todos os pedidos');
