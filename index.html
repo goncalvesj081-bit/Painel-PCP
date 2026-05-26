@@ -796,10 +796,10 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
       <span id="clockDate" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);display:block">---</span>
     </div>
   </div>
-  <!-- Linha 2: info do arquivo + última atualização (visível só após upload) -->
-  <div id="headerInfoBar" style="display:none;width:100%;padding:3px 14px 7px;gap:8px;flex-wrap:wrap;align-items:center">
-    <span id="finfo" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">—</span>
+  <!-- Linha 2: versão + data de atualização (sempre visível se __LAST_UPDATE__ preenchido) -->
+  <div id="headerInfoBar" style="display:none;width:100%;padding:3px 14px 7px;gap:12px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--border)">
     <span id="lastUpdateInfo" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap"></span>
+    <span id="finfo" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:none">—</span>
   </div>
   <!-- Linha 3: botões de ação -->
   <div class="header-right" style="border-top:1px solid var(--border);width:100%;padding:7px 10px">
@@ -1056,7 +1056,7 @@ const __VERSION__ = "1.5";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "26/05/2026 às 08:00";
+const __LAST_UPDATE__ = "26/05/2026 às 08:04";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Roda após o DOM estar pronto
@@ -1065,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', function(){
   const verEl=document.getElementById('appVersion');
   if(verEl) verEl.textContent=`v${__VERSION__}`;
 
-  // Data de atualização — só aparece se injetada pelo Python
+  // Data de atualização — aparece sempre que __LAST_UPDATE__ estiver preenchido pelo Python
   const el=document.getElementById('lastUpdateInfo');
   const bar=document.getElementById('headerInfoBar');
   if(el && __LAST_UPDATE__){
@@ -1259,9 +1259,9 @@ function build(rows,fname,currentFile){
 
   document.getElementById('drop').classList.add('gone');
   document.getElementById('dash').style.display='block';
-  document.getElementById('finfo').textContent=`📄 ${fname} — ${rows.length} linhas · ${PEDIDOS.length} pedidos`;
-
-  // Mostrar barra de info só após carregar arquivo
+  // Mostrar info do arquivo após upload
+  const finfoEl=document.getElementById('finfo');
+  if(finfoEl){finfoEl.textContent=`📄 ${fname} — ${rows.length} linhas · ${PEDIDOS.length} pedidos`;finfoEl.style.display='';}
   const infoBar=document.getElementById('headerInfoBar');
   if(infoBar) infoBar.style.display='flex';
 
