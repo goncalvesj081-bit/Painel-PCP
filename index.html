@@ -1224,7 +1224,7 @@ const __VERSION__ = "1.6";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "26/05/2026 às 18:24";
+const __LAST_UPDATE__ = "26/05/2026 às 18:27";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
@@ -1597,7 +1597,7 @@ function render(){
       if(wantsOk&&!wantsPend&&!isOk)return false;
       if(wantsPend&&!wantsOk&&isOk)return false;
     }
-    if(fCargas.size>0&&!p.itens.some(it=>fCargas.has(it.n||'')))return false;
+    if(fCargas.size>0&&!p.itens.some(it=>fCargas.has(formatCargaNum(it.n||''))))return false;
     if(!matchDataCarga(p))return false;
     return true;
   });
@@ -1615,12 +1615,12 @@ function render(){
     const pedOk=fPedido.size===0||fPedido.has(p.pedido);
     const clsOk=fCls.size===0||fCls.has(p.class_);
     const cliOk=fCliente.size===0||fCliente.has(p.cliente);
-    const cargaOk=fCargas.size===0||p.itens.some(it=>fCargas.has(it.n||''));
+    const cargaOk=fCargas.size===0||p.itens.some(it=>fCargas.has(formatCargaNum(it.n||'')));
     let stOk=true;
     if(fSt.size>0){const{pct}=prog(p);const ok=pct===100;if(wO&&!wP&&!ok)stOk=false;if(wP&&!wO&&ok)stOk=false;}
     if(qOk){
       if(clsOk&&cliOk&&cargaOk&&stOk){if(p.pedido)availPedido.add(p.pedido);}
-      if(pedOk&&cliOk&&clsOk&&stOk){p.itens.forEach(it=>{if(it.n)availCarga.add(it.n);});}
+      if(pedOk&&cliOk&&clsOk&&stOk){p.itens.forEach(it=>{if(it.n)availCarga.add(formatCargaNum(it.n));});}
       if(pedOk&&cliOk&&cargaOk&&stOk){if(p.class_)availClass.add(p.class_);}
       if(pedOk&&clsOk&&cargaOk&&stOk){if(p.cliente)availCliente.add(p.cliente);}
       if(pedOk&&clsOk&&cliOk&&cargaOk){const{pct}=prog(p);availStatus.add(pct===100?'ok':'pend');}
@@ -1666,7 +1666,7 @@ function render(){
   pageCards=0;pageTabela=0;
   if(VIEW==='cards')renderCards(pedsOrdenados,somentePend,qProd);
   else if(VIEW==='tabela')renderTabela(pedsOrdenados,somentePend,qProd);
-  else if(VIEW==='cargapanel')renderCargaPanel();
+  else if(VIEW==='cargapanel')renderCargaPanel(peds);
   else renderKpiPanel();
 }
 
@@ -2093,36 +2093,66 @@ function renderCargaPanel(filteredPeds){
     const ini=parseDateToMs(document.getElementById('dataCargaInicio')?.value||'');
     const fim=parseDateToMs(document.getElementById('dataCargaFim')?.value||'');
     filteredPeds=PEDIDOS.filter(p=>{
-      if(q&&!p.pedido.toLowerCase().includes(q))return false;
+      if(q&&!p.pedido.toLowerCase().includes(q)&&!p.itens.some(it=>(it.n||'').toLowerCase().includes(q)))return false;
       if(fPedido.size>0&&!fPedido.has(p.pedido))return false;
       if(fCls.size>0&&!fCls.has(p.class_))return false;
       if(fCliente.size>0&&!fCliente.has(p.cliente))return false;
       if(fSt.size>0){const{pct}=prog(p);const ok=pct===100;if(fSt.has('ok')&&!fSt.has('pend')&&!ok)return false;if(fSt.has('pend')&&!fSt.has('ok')&&ok)return false;}
-      if(fCargas.size>0&&!p.itens.some(it=>fCargas.has(it.n||'')))return false;
+      if(fCargas.size>0&&!p.itens.some(it=>fCargas.has(formatCargaNum(it.n||''))))return false;
       if(!matchDataCargaFn(p,ini,fim))return false;
       return true;
     });
   }
 
-  // Agrupar por número de carga
+  // Agrupar por número de carga + data (chave composta — separa reutilizações do mesmo número)
   const cargaMap=new Map();
   for(const p of filteredPeds){
-    const nums=[...new Set(p.itens.map(it=>it.n||'').filter(Boolean))];
-    const dateVal=p.carga||(p.itens[0]?p.itens[0].carga:'');
-    for(const num of nums){
-      if(!cargaMap.has(num))cargaMap.set(num,{n:num,date:dateVal,peds:[],totalItens:0,doneItens:0});
-      const entry=cargaMap.get(num);
-      entry.peds.push(p);
-      for(const it of p.itens){
-        if((it.n||'')===num){
-          const{pct}=progItem(it);
-          entry.totalItens++;
-          if(pct===100)entry.doneItens++;
-        }
+    // Agrupa cada item por (num, date) para separar cargas com mesmo número em datas diferentes
+    const itemGroups=new Map();
+    for(const it of p.itens){
+      const num=it.n||'';
+      if(!num)continue;
+      const dateVal=it.carga||p.carga||'';
+      // Chave usa o nome sem sufixo numérico para agrupar variantes do mesmo número
+      const numBase=formatCargaNum(num);
+      const key=numBase+'||'+(dateVal||'');
+      if(!itemGroups.has(key))itemGroups.set(key,{num,numBase,dateVal,itens:[]});
+      itemGroups.get(key).itens.push(it);
+    }
+    for(const[key,{num,numBase,dateVal,itens:grpItens}] of itemGroups){
+      if(!cargaMap.has(key))cargaMap.set(key,{key,n:numBase,date:dateVal,peds:[],totalItens:0,doneItens:0});
+      const entry=cargaMap.get(key);
+      if(!entry.peds.includes(p))entry.peds.push(p);
+      for(const it of grpItens){
+        const{pct}=progItem(it);
+        entry.totalItens++;
+        if(pct===100)entry.doneItens++;
       }
     }
   }
-  const cargas=[...cargaMap.values()].sort((a,b)=>{
+  // Determinar se filtro de pendências está ativo
+  const _cargaPendAtivo=_cargaSoPend||(_sd.Status.values.has('pend')&&!_sd.Status.values.has('ok'));
+
+  // Filtrar busca por número/nome de carga no campo de texto
+  const _cargaBuscaTxt=(document.getElementById('busca').value||'').toLowerCase().trim();
+
+  let cargas=[...cargaMap.values()];
+
+  // Se filtro "Com pendências" ativo, ocultar cargas 100% concluídas
+  if(_cargaPendAtivo){
+    cargas=cargas.filter(c=>{
+      const pct=c.totalItens?Math.round(c.doneItens/c.totalItens*100):0;
+      return pct<100;
+    });
+  }
+
+  // Filtrar pelo texto digitado no campo de busca (número ou nome da carga)
+  if(_cargaBuscaTxt){
+    cargas=cargas.filter(c=>c.n.toLowerCase().includes(_cargaBuscaTxt)||
+      (c.date&&c.date.toLowerCase().includes(_cargaBuscaTxt)));
+  }
+
+  cargas=cargas.sort((a,b)=>{
     const pctA=a.totalItens?Math.round(a.doneItens/a.totalItens*100):0;
     const pctB=b.totalItens?Math.round(b.doneItens/b.totalItens*100):0;
     if(pctB!==pctA)return pctB-pctA; // maior % primeiro
@@ -2139,13 +2169,12 @@ function renderCargaPanel(filteredPeds){
   grid.innerHTML=cargas.map(c=>{
     const pct=c.totalItens?Math.round(c.doneItens/c.totalItens*100):0;
     const pctColor=pct===100?'var(--green)':pct>0?'var(--acc)':'var(--red)';
-    const isSel=_cargaSelected===c.n;
+    const isSel=_cargaSelected===c.key;
     const dateDisplay=c.date?formatCargaDate(c.date):'—';
-    const cargaCardPend=_cargaSoPend||(_sd.Status.values.has('pend')&&!_sd.Status.values.has('ok'));
-    return`<div class="carga-card${isSel?' selected':''}" onclick="cargaPanelSelect('${c.n.replace(/'/g,"\\'")}')">
-      <div class="carga-card-num">Carga ${c.n}</div>
+    return`<div class="carga-card${isSel?' selected':''}" onclick="cargaPanelSelect('${c.key.replace(/'/g,"\\'")}')">
+      <div class="carga-card-num">Carga ${formatCargaNum(c.n)}</div>
       <div class="carga-card-date">📅 ${dateDisplay}</div>
-      <div class="carga-card-count">${c.peds.length} pedido${c.peds.length!==1?'s':''} · ${cargaCardPend?(c.totalItens-c.doneItens)+' pendente'+(c.totalItens-c.doneItens!==1?'s':''):c.totalItens+' item'+(c.totalItens!==1?'s':'')}</div>
+      <div class="carga-card-count">${c.peds.length} pedido${c.peds.length!==1?'s':''} · ${_cargaPendAtivo?(c.totalItens-c.doneItens)+' pendente'+(c.totalItens-c.doneItens!==1?'s':''):c.totalItens+' item'+(c.totalItens!==1?'s':'')}</div>
       <div class="carga-card-pct">
         <span class="carga-card-pct-val" style="color:${pctColor}">${pct}%</span>
         <div class="carga-card-pct-bar"><div style="width:${pct}%;height:100%;background:${pctColor};border-radius:2px"></div></div>
@@ -2175,7 +2204,7 @@ function cargaPanelClear(){
 
 function _renderCargaItens(carga){
   const pane=document.getElementById('cargaPanelItens');
-  document.getElementById('cargaPanelTitle').textContent=`📦 Carga ${carga.n}`;
+  document.getElementById('cargaPanelTitle').textContent=`📦 Carga ${formatCargaNum(carga.n)}`;
   const dateDisplay=carga.date?formatCargaDate(carga.date):'—';
   const pct=carga.totalItens?Math.round(carga.doneItens/carga.totalItens*100):0;
   pane.style.display='block';
@@ -2189,7 +2218,7 @@ function _renderCargaItens(carga){
 
   // Itens apenas desta carga — com filtro pendentes se ativo (toggle local OU filtro global de status)
   const cargaPend=_cargaSoPend||(_sd.Status.values.has('pend')&&!_sd.Status.values.has('ok'));
-  let allItens=carga.peds.flatMap(p=>p.itens.filter(it=>(it.n||'')===carga.n).map(it=>({...it,_ped:p})));
+  let allItens=carga.peds.flatMap(p=>p.itens.filter(it=>formatCargaNum(it.n||'')===carga.n&&(it.carga||p.carga||'')===carga.date).map(it=>({...it,_ped:p})));
   if(cargaPend) allItens=allItens.filter(it=>progItem(it).pct<100);
   allItens=sortItens(allItens);
 
@@ -2508,6 +2537,14 @@ function dcParseDate(raw){
 }
 
 // Exibe data exatamente como vem do CSV (sem transformação)
+// Remove sufixo numérico longo do nome da carga (ex: "3229 SANTA CATARINA 23814" → "3229 SANTA CATARINA")
+// Mantém o código original intacto para agrupamento — só afeta exibição
+function formatCargaNum(n){
+  if(!n)return n;
+  // Remove sequência de 4+ dígitos no final do nome (separada por espaço)
+  return n.replace(/\s+\d{4,}\s*$/, '').trim();
+}
+
 function formatCargaDate(raw){return raw||'';}
 
 function dcBuildIndex(rows){
@@ -3011,18 +3048,20 @@ function priorRenderDetalhe(){
 // ─── AUTO-LOAD: busca dados.csv e prioridades.txt automaticamente ────────────
 (async function autoLoad(){
   const isLocal = location.protocol === 'file:';
-  if(isLocal) return;
+  if(isLocal) return; // file:// não permite fetch — use o botão "Carregar TXT" manualmente
 
-  const csvUrl  = (new URL('dados.csv',       location.href)).href;
-  const txtUrl  = (new URL('prioridades.txt', location.href)).href;
+  // GitHub Pages: monta URLs relativas ao index.html
+  const base = location.href.endsWith('/') ? location.href : location.href.replace(/\/[^/]*$/, '/');
+  const csvUrl  = base + 'dados.csv';
+  const txtUrl  = base + 'prioridades.txt';
 
-  // Dispara os dois fetches em paralelo
+  // Dispara os dois fetches em paralelo (só o fetch de rede, não o processamento)
   const [csvRes, txtRes] = await Promise.allSettled([
     fetch(csvUrl, { cache: 'no-store' }),
     fetch(txtUrl, { cache: 'no-store' }),
   ]);
 
-  // ── CSV ──────────────────────────────────────────────────────────────────
+  // ── CSV primeiro — PEDIDOS precisa estar populado antes do TXT ───────────
   const csvOk = csvRes.status === 'fulfilled' && csvRes.value.ok;
   if(csvOk){
     try{
@@ -3037,12 +3076,14 @@ function priorRenderDetalhe(){
     }catch(e){ hideLoading(); }
   }
 
-  // ── TXT de prioridades ───────────────────────────────────────────────────
+  // ── TXT de prioridades — carregado APÓS o build() para cruzar com PEDIDOS ─
   const txtOk = txtRes.status === 'fulfilled' && txtRes.value.ok;
   if(txtOk){
     try{
       const texto = await txtRes.value.text();
       priorCarregarTexto(texto);
+      // Se a view já estiver em prioridades, re-renderiza
+      if(typeof VIEW !== 'undefined' && VIEW === 'prioridades') priorRender();
     }catch(e){}
   }
 })();
