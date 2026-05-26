@@ -564,6 +564,26 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 }
 .btn-kpi-close:hover{background:var(--acc2)}
 
+/* ══ PAINEL CARGA ════════════════════════════════════════════════ */
+.carga-panel-wrap{padding:4px 0}
+.carga-panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+.carga-list-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:18px}
+.carga-card{
+  background:var(--bg2);border:2px solid var(--border2);
+  border-radius:var(--rad-lg);padding:16px 18px;cursor:pointer;
+  transition:border-color .18s,box-shadow .18s,transform .12s;
+  display:flex;flex-direction:column;gap:6px;
+}
+.carga-card:hover{border-color:var(--acc);box-shadow:var(--shadow);transform:translateY(-1px)}
+.carga-card.selected{border-color:var(--acc);background:rgba(77,159,255,.08);box-shadow:0 0 0 3px rgba(77,159,255,.18)}
+.carga-card-num{font-family:'JetBrains Mono',monospace;font-size:20px;font-weight:800;color:var(--acc)}
+.carga-card-date{font-size:13px;color:var(--text3);font-weight:600}
+.carga-card-count{font-size:12px;color:var(--text2);background:var(--bg4);padding:3px 9px;border-radius:10px;width:fit-content;font-weight:700}
+.carga-card-pct{display:flex;align-items:center;gap:6px;margin-top:2px}
+.carga-card-pct-val{font-size:14px;font-weight:800}
+.carga-card-pct-bar{flex:1;height:4px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.carga-itens-header{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad-lg);padding:16px 20px;margin-bottom:4px}
+
 /* ══ MOBILE FILTER CONFIRM BUTTON ═══════════════════════════════ */
 .sd-confirm-btn{
   display:none;
@@ -751,6 +771,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
     <div class="logo"><span class="logo-dot"></span>Controle de Produção</div>
     <div style="display:flex;align-items:center;gap:10px;min-width:0">
       <span id="finfo" style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px">—</span>
+      <span id="lastUpdateInfo" style="font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace;white-space:nowrap;display:none"></span>
       <div id="realtimeClock" style="flex-shrink:0">
         <span id="clockTime">--:--:--</span>
         <span id="clockDate">---</span>
@@ -916,6 +937,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
           <button class="vbtn on" id="vbCards" onclick="setView('cards')">Por Pedido</button>
           <button class="vbtn" id="vbTabela" onclick="setView('tabela')">Tabela</button>
           <button class="vbtn" id="vbKpiPanel" onclick="setView('kpipanel')">📊 KPIs</button>
+          <button class="vbtn" id="vbCargaPanel" onclick="setView('cargapanel')">📦 Carga</button>
         </div>
       </div>
     </div>
@@ -953,6 +975,26 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
           <button class="btn-s" onclick="openKpiConfig()" style="font-size:12px;padding:6px 14px">⚙ Configurar</button>
         </div>
         <div class="kpis kpis-big" id="kpisPainel"></div>
+      </div>
+    </div>
+
+    <!-- PAINEL CARGA -->
+    <div id="vCargaPanel" style="display:none">
+      <div class="carga-panel-wrap">
+        <div class="carga-panel-header">
+          <div style="font-size:15px;font-weight:700;color:var(--text2)">Selecione uma carga para visualizar seus pedidos</div>
+          <button class="btn-period-clear" id="btnCargaPanelClear" onclick="cargaPanelClear()" style="display:none">&#x2715; Limpar seleção</button>
+        </div>
+        <div class="carga-list-grid" id="cargaListGrid"></div>
+        <div id="cargaPanelItens" style="display:none">
+          <div class="carga-itens-header">
+            <div id="cargaPanelTitle" style="font-size:17px;font-weight:800;color:var(--acc)"></div>
+            <div id="cargaPanelMeta" style="font-size:13px;color:var(--text3);margin-top:4px"></div>
+          </div>
+          <div class="tbl-wrap" style="margin-top:12px"><div class="tbl-scroll">
+            <table><thead><tr id="cargaThead"></tr></thead><tbody id="cargaTbody"></tbody></table>
+          </div></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1173,6 +1215,18 @@ function build(rows,fname){
   document.getElementById('dash').style.display='block';
   document.getElementById('finfo').textContent=`📄 ${fname} — ${rows.length} linhas · ${PEDIDOS.length} pedidos`;
 
+  // Ajuste 5: registrar última atualização
+  (function setLastUpdate(){
+    const now=new Date();
+    const d=String(now.getDate()).padStart(2,'0');
+    const mo=String(now.getMonth()+1).padStart(2,'0');
+    const y=now.getFullYear();
+    const h=String(now.getHours()).padStart(2,'0');
+    const mi=String(now.getMinutes()).padStart(2,'0');
+    const el=document.getElementById('lastUpdateInfo');
+    if(el){el.textContent=`🕐 Última atualização: ${d}/${mo}/${y} às ${h}:${mi}`;el.style.display='';}
+  })();
+
   const pedidos=[...new Set(PEDIDOS.map(p=>p.pedido).filter(Boolean))].sort();
   sdBuild('Pedido',pedidos,v=>v,'Todos os pedidos');
 
@@ -1210,6 +1264,31 @@ function buildThead(){
   }).join('');
 }
 
+// ─── Helpers de data — escopo global (evita duplicação em render/kpiPanel/cargaPanel) ──
+function parseDateToMs(raw){
+  if(!raw)return null;
+  const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m)return new Date(+m[1],+m[2]-1,+m[3]).getTime();
+  return null;
+}
+function cargaDateToMs(raw){
+  if(!raw)return null;
+  const p=dcParseDate(raw);
+  if(!p||!p.year)return null;
+  return new Date(p.year,p.month,p.day||1).getTime();
+}
+function matchDataCargaFn(p,ini,fim){
+  if(!ini&&!fim)return true;
+  const candidates=[p.carga,...p.itens.map(it=>it.carga||'')].filter(Boolean);
+  return candidates.some(c=>{
+    const ms=cargaDateToMs(c);
+    if(ms===null)return false;
+    if(ini&&ms<ini)return false;
+    if(fim&&ms>fim)return false;
+    return true;
+  });
+}
+
 function render(){
   const q=(document.getElementById('busca').value||'').toLowerCase().trim();
   const fPedido=_sd.Pedido.values;
@@ -1218,33 +1297,9 @@ function render(){
   const fSt=_sd.Status.values;
   const fCargas=_sd.Carga.values;
 
-  // ── Filtro de Data da Carga simples ──────────────────────────────────────
-  function parseDateToMs(raw){
-    if(!raw)return null;
-    const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if(m)return new Date(parseInt(m[1]),parseInt(m[2])-1,parseInt(m[3])).getTime();
-    return null;
-  }
-  function cargaDateToMs(raw){
-    if(!raw)return null;
-    const p=dcParseDate(raw);
-    if(!p||!p.year)return null;
-    return new Date(p.year,p.month,p.day||1).getTime();
-  }
   const dcInicioMs=parseDateToMs(document.getElementById('dataCargaInicio')?.value||'');
   const dcFimMs=parseDateToMs(document.getElementById('dataCargaFim')?.value||'');
-  function matchDataCarga(p){
-    if(!dcInicioMs&&!dcFimMs)return true;
-    // check pedido-level carga or any item carga
-    const candidates=[p.carga,...p.itens.map(it=>it.carga||'')].filter(Boolean);
-    return candidates.some(c=>{
-      const ms=cargaDateToMs(c);
-      if(ms===null)return false;
-      if(dcInicioMs&&ms<dcInicioMs)return false;
-      if(dcFimMs&&ms>dcFimMs)return false;
-      return true;
-    });
-  }
+  const matchDataCarga=p=>matchDataCargaFn(p,dcInicioMs,dcFimMs);
 
   const peds=PEDIDOS.filter(p=>{
     if(q&&!p.pedido.toLowerCase().includes(q))return false;
@@ -1277,6 +1332,8 @@ function render(){
         if(wP&&!wO&&isOk)return false;
       }
       if(skipName!=='Carga'&&fCargas.size>0&&!p.itens.some(it=>fCargas.has(it.n||'')))return false;
+      // Ajuste 4: filtro de data sempre aplicado em todos os outros filtros
+      if(!matchDataCarga(p))return false;
       return true;
     });
   }
@@ -1361,9 +1418,16 @@ function render(){
   document.getElementById('sub').textContent=
     `${peds.length} pedido${peds.length!==1?'s':''} encontrado${peds.length!==1?'s':''}`;
 
+  // Ajuste 2: se filtro de status = somente pendentes E há filtro de data, ordena do mais concluído ao menos
+  let pedsOrdenados=peds;
+  if(fSt.size===1&&fSt.has('pend')){
+    pedsOrdenados=[...peds].sort((a,b)=>prog(b).pct-prog(a).pct);
+  }
+
   pageCards=0;pageTabela=0;
-  if(VIEW==='cards')renderCards(peds);
-  else if(VIEW==='tabela')renderTabela(peds);
+  if(VIEW==='cards')renderCards(pedsOrdenados);
+  else if(VIEW==='tabela')renderTabela(pedsOrdenados);
+  else if(VIEW==='cargapanel')renderCargaPanel();
   else renderKpiPanel();
 }
 
@@ -1372,32 +1436,11 @@ function renderKpiPanel(){
   const el=document.getElementById('kpisPainel');
   if(!el)return;
 
-  function parseDateToMs(raw){
-    if(!raw)return null;
-    const m=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if(m)return new Date(parseInt(m[1]),parseInt(m[2])-1,parseInt(m[3])).getTime();
-    return null;
-  }
-  function cargaDateToMs(raw){
-    if(!raw)return null;
-    const p=dcParseDate(raw);
-    if(!p||!p.year)return null;
-    return new Date(p.year,p.month,p.day||1).getTime();
-  }
   const msIni=parseDateToMs(document.getElementById('periodoInicio')?.value||'');
   const msFim=parseDateToMs(document.getElementById('periodoFim')?.value||'');
 
   // Apply period over ALL pedidos (ignoring other filters — period is KPI-only)
-  const peds=(!msIni&&!msFim)?PEDIDOS:PEDIDOS.filter(p=>{
-    const candidates=[p.carga,...p.itens.map(it=>it.carga||'')].filter(Boolean);
-    return candidates.some(c=>{
-      const ms=cargaDateToMs(c);
-      if(ms===null)return false;
-      if(msIni&&ms<msIni)return false;
-      if(msFim&&ms>msFim)return false;
-      return true;
-    });
-  });
+  const peds=(!msIni&&!msFim)?PEDIDOS:PEDIDOS.filter(p=>matchDataCargaFn(p,msIni,msFim));
 
   let kTotal=peds.length,k100=0,kProdOk=0,kProdPend=0,kQtdTotal=0;
   for(const p of peds){
@@ -1734,12 +1777,156 @@ function setView(v){
   document.getElementById('vCards').style.display=v==='cards'?'block':'none';
   document.getElementById('vTabela').style.display=v==='tabela'?'block':'none';
   document.getElementById('vKpiPanel').style.display=v==='kpipanel'?'block':'none';
+  document.getElementById('vCargaPanel').style.display=v==='cargapanel'?'block':'none';
   document.getElementById('vbCards').classList.toggle('on',v==='cards');
   document.getElementById('vbTabela').classList.toggle('on',v==='tabela');
   document.getElementById('vbKpiPanel').classList.toggle('on',v==='kpipanel');
-  // hide sub-bar legend when in KPI panel view
-  document.querySelector('.sub-bar').style.display=v==='kpipanel'?'none':'flex';
-  if(v==='kpipanel')renderKpiPanel();else render();
+  document.getElementById('vbCargaPanel').classList.toggle('on',v==='cargapanel');
+  // hide sub-bar legend when in KPI panel or Carga panel view
+  document.querySelector('.sub-bar').style.display=(v==='kpipanel'||v==='cargapanel')?'none':'flex';
+  if(v==='kpipanel')renderKpiPanel();
+  else if(v==='cargapanel')renderCargaPanel();
+  else render();
+}
+
+// ─── PAINEL CARGA ─────────────────────────────────────────────────────────────
+let _cargaSelected=null;
+
+function renderCargaPanel(filteredPeds){
+  // Se chamado direto (ex: troca de aba), recalcula os filtros; se chamado pelo render(), recebe peds prontos
+  if(!filteredPeds){
+    const q=(document.getElementById('busca').value||'').toLowerCase().trim();
+    const fPedido=_sd.Pedido.values,fCls=_sd.Class.values,fCliente=_sd.Cliente.values;
+    const fSt=_sd.Status.values,fCargas=_sd.Carga.values;
+    const ini=parseDateToMs(document.getElementById('dataCargaInicio')?.value||'');
+    const fim=parseDateToMs(document.getElementById('dataCargaFim')?.value||'');
+    filteredPeds=PEDIDOS.filter(p=>{
+      if(q&&!p.pedido.toLowerCase().includes(q))return false;
+      if(fPedido.size>0&&!fPedido.has(p.pedido))return false;
+      if(fCls.size>0&&!fCls.has(p.class_))return false;
+      if(fCliente.size>0&&!fCliente.has(p.cliente))return false;
+      if(fSt.size>0){const{pct}=prog(p);const ok=pct===100;if(fSt.has('ok')&&!fSt.has('pend')&&!ok)return false;if(fSt.has('pend')&&!fSt.has('ok')&&ok)return false;}
+      if(fCargas.size>0&&!p.itens.some(it=>fCargas.has(it.n||'')))return false;
+      if(!matchDataCargaFn(p,ini,fim))return false;
+      return true;
+    });
+  }
+
+  // Agrupar por número de carga
+  const cargaMap=new Map();
+  for(const p of filteredPeds){
+    const nums=[...new Set(p.itens.map(it=>it.n||'').filter(Boolean))];
+    const dateVal=p.carga||(p.itens[0]?p.itens[0].carga:'');
+    for(const num of nums){
+      if(!cargaMap.has(num))cargaMap.set(num,{n:num,date:dateVal,peds:[],totalItens:0,doneItens:0});
+      const entry=cargaMap.get(num);
+      entry.peds.push(p);
+      for(const it of p.itens){
+        if((it.n||'')===num){
+          const{pct}=progItem(it);
+          entry.totalItens++;
+          if(pct===100)entry.doneItens++;
+        }
+      }
+    }
+  }
+  const cargas=[...cargaMap.values()].sort((a,b)=>{
+    const pctA=a.totalItens?Math.round(a.doneItens/a.totalItens*100):0;
+    const pctB=b.totalItens?Math.round(b.doneItens/b.totalItens*100):0;
+    if(pctB!==pctA)return pctB-pctA; // maior % primeiro
+    return a.n.localeCompare(b.n,undefined,{numeric:true}); // desempate por número
+  });
+
+  const grid=document.getElementById('cargaListGrid');
+  if(!cargas.length){
+    grid.innerHTML='<div style="color:var(--text3);font-size:14px;padding:20px;grid-column:1/-1">Nenhuma carga encontrada para os filtros ativos.</div>';
+    document.getElementById('cargaPanelItens').style.display='none';
+    return;
+  }
+
+  grid.innerHTML=cargas.map(c=>{
+    const pct=c.totalItens?Math.round(c.doneItens/c.totalItens*100):0;
+    const pctColor=pct===100?'var(--green)':pct>0?'var(--acc)':'var(--red)';
+    const isSel=_cargaSelected===c.n;
+    const dateDisplay=c.date?formatCargaDate(c.date):'—';
+    return`<div class="carga-card${isSel?' selected':''}" onclick="cargaPanelSelect('${c.n.replace(/'/g,"\\'")}')">
+      <div class="carga-card-num">Carga ${c.n}</div>
+      <div class="carga-card-date">📅 ${dateDisplay}</div>
+      <div class="carga-card-count">${c.peds.length} pedido${c.peds.length!==1?'s':''} · ${c.totalItens} item${c.totalItens!==1?'s':''}</div>
+      <div class="carga-card-pct">
+        <span class="carga-card-pct-val" style="color:${pctColor}">${pct}%</span>
+        <div class="carga-card-pct-bar"><div style="width:${pct}%;height:100%;background:${pctColor};border-radius:2px"></div></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  if(_cargaSelected){
+    const sel=cargaMap.get(_cargaSelected);
+    if(sel) _renderCargaItens(sel);
+    else{document.getElementById('cargaPanelItens').style.display='none';_cargaSelected=null;}
+  }
+}
+
+function cargaPanelSelect(n){
+  _cargaSelected=(_cargaSelected===n)?null:n;
+  document.getElementById('btnCargaPanelClear').style.display=_cargaSelected?'':'none';
+  renderCargaPanel();
+}
+
+function cargaPanelClear(){
+  _cargaSelected=null;
+  document.getElementById('btnCargaPanelClear').style.display='none';
+  document.getElementById('cargaPanelItens').style.display='none';
+  renderCargaPanel();
+}
+
+function _renderCargaItens(carga){
+  const pane=document.getElementById('cargaPanelItens');
+  document.getElementById('cargaPanelTitle').textContent=`📦 Carga ${carga.n}`;
+  const dateDisplay=carga.date?formatCargaDate(carga.date):'—';
+  const pct=carga.totalItens?Math.round(carga.doneItens/carga.totalItens*100):0;
+  document.getElementById('cargaPanelMeta').textContent=`${dateDisplay}  ·  ${carga.peds.length} pedido${carga.peds.length!==1?'s':''}  ·  ${carga.totalItens} item${carga.totalItens!==1?'s':''}  ·  ${pct}% concluído`;
+  pane.style.display='block';
+
+  // Cabeçalho da tabela
+  const thCols=window._TH_COLS||[];
+  document.getElementById('cargaThead').innerHTML=thCols.map(c=>{
+    const cls=c.setor?'th-setor':'';
+    return`<th class="${cls}">${c.lbl}</th>`;
+  }).join('');
+
+  // Itens apenas desta carga
+  let allItens=carga.peds.flatMap(p=>p.itens.filter(it=>(it.n||'')===carga.n).map(it=>({...it,_ped:p})));
+  allItens=sortItens(allItens);
+
+  document.getElementById('cargaTbody').innerHTML=allItens.map(it=>{
+    const{pct:pctItem,embDone:itemEmbDone}=progItem(it);
+    const setorCells=SETORES.map(s=>{
+      const st=it[s.key];
+      const embOverride=itemEmbDone&&s.key!=='emb'&&st.tipo==='pend';
+      const cls=embOverride?'tp-skip':st.tipo==='done'?'tp-done':st.tipo==='pend'?'tp-pend':'tp-skip';
+      const ico=embOverride?'—':st.tipo==='done'?'':st.tipo==='pend'?'✗':'—';
+      const date=st.tipo==='done'?st.display:'';
+      const dateParts=date?date.split('/'):[];
+      const dateHtml=date
+        ?`<span style="display:block;font-size:15px;font-weight:800;line-height:1.2;font-family:'JetBrains Mono',monospace">${dateParts[0]||date}</span><span style="display:block;font-size:15px;font-weight:700;line-height:1.2;font-family:'JetBrains Mono',monospace;opacity:.85">${dateParts[1]||''}</span>`
+        :`<span style="font-size:15px">${ico}</span>`;
+      return`<td class="td-setor"><span class="tpill ${cls}" style="width:56px;min-height:58px;gap:0px">${dateHtml}</span></td>`;
+    }).join('');
+    const pctColor=pctItem===100?'var(--green)':pctItem>0?'var(--acc)':'var(--red)';
+    const qtdDisplay=(it.qtd||'').replace(/\.0+$/,'');
+    return`<tr style="cursor:pointer" onclick="pedPopoverShow(event,'${it.pedido||''}')">
+      <td class="tcell-ped" style="font-size:15px">${it.pedido||'—'}</td>
+      <td class="tcell-gray"><div style="font-weight:700;font-size:15px">${it.n||'—'}</div>${it.carga?`<div style="font-size:13px;color:var(--text3);margin-top:2px;font-family:'JetBrains Mono',monospace">${it.carga}</div>`:''}</td>
+      <td class="tcell-item" style="max-width:260px;white-space:normal;word-break:break-word"><div style="font-size:15px;font-weight:700">${it.item||'—'}</div>${it.comp?`<div style="font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:3px">${it.comp}</div>`:''}</td>
+      <td class="tcell-gray" style="text-align:center;font-weight:700;font-size:15px">${qtdDisplay||'—'}</td>
+      ${setorCells}
+      <td class="tcell-pct">
+        <div class="pct-cell"><span class="pct-cell-val" style="color:${pctColor};font-size:15px">${pctItem}%</span>
+        <div class="pct-cell-bar"><div style="width:${pctItem}%;height:100%;background:${pctColor};border-radius:2px"></div></div></div>
+      </td>
+    </tr>`;
+  }).join('');
 }
 
 // ─── export ───────────────────────────────────────────────────────────────────
@@ -2009,11 +2196,21 @@ function dcParseDate(raw){
   // yyyy-mm-dd
   m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if(m) return{day:parseInt(m[3]),month:parseInt(m[2])-1,year:parseInt(m[1]),raw:s};
-  // dd/mm (no year — leave null)
+  // dd/mm (no year — infer year same logic as dd/mmm)
   m=s.match(/^(\d{1,2})[\/\-](\d{1,2})$/);
-  if(m) return{day:parseInt(m[1]),month:parseInt(m[2])-1,year:null,raw:s};
+  if(m){
+    const day=parseInt(m[1]),mo=parseInt(m[2])-1;
+    const nowY=new Date().getFullYear();
+    const nowM=new Date().getMonth();
+    let yr=nowY;
+    if(mo>nowM+1) yr=nowY-1;
+    return{day,month:mo,year:yr,raw:s};
+  }
   return null;
 }
+
+// Exibe data exatamente como vem do CSV (sem transformação)
+function formatCargaDate(raw){return raw||'';}
 
 function dcBuildIndex(rows){
   _dcIndex.clear();
