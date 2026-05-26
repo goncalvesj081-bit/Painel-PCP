@@ -1059,18 +1059,17 @@ const __VERSION__ = "1.5";
 const __LAST_UPDATE__ = "26/05/2026 às 09:14";
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Roda após o DOM estar pronto
-document.addEventListener('DOMContentLoaded', function(){
-  // Versão sempre visível no header
-  const verEl=document.getElementById('appVersion');
-  if(verEl) verEl.textContent=`v${__VERSION__}`;
+// Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
+// O script fica no final do body, então o DOM já está disponível
+window.addEventListener('load', function(){
+  const verEl = document.getElementById('appVersion');
+  if(verEl) verEl.textContent = 'v' + __VERSION__;
 
-  // Data de atualização — aparece sempre que __LAST_UPDATE__ estiver preenchido pelo Python
-  const el=document.getElementById('lastUpdateInfo');
-  const bar=document.getElementById('headerInfoBar');
-  if(el && __LAST_UPDATE__){
-    el.textContent=`🕐 Atualizado: ${__LAST_UPDATE__}`;
-    if(bar) bar.style.display='flex';
+  if(__LAST_UPDATE__){
+    const el  = document.getElementById('lastUpdateInfo');
+    const bar = document.getElementById('headerInfoBar');
+    if(el)  el.textContent = '🕐 Atualizado: ' + __LAST_UPDATE__;
+    if(bar) bar.style.display = 'flex';
   }
 });
 const SETORES=[
@@ -2472,13 +2471,6 @@ sdRender('Status','');
     hideLoading();
     if(rows.length){
       build(rows, csvName);
-      // Mostra data de atualização injetada pelo Python
-      const el=document.getElementById('lastUpdateInfo');
-      const bar=document.getElementById('headerInfoBar');
-      if(el && __LAST_UPDATE__){
-        el.textContent=`🕐 Atualizado: ${__LAST_UPDATE__}`;
-        if(bar) bar.style.display='flex';
-      }
     }
   } catch(e) {
     hideLoading();
