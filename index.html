@@ -1130,6 +1130,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
       <button class="btn-theme" id="btnTheme" onclick="toggleTheme()" title="Alternar tema">🌙</button>
       <button class="btn-s" id="btnKpi" onclick="toggleKpi()">▲ KPIs</button>
       <button class="btn-s" onclick="openKpiConfig()" title="Configurar KPIs visíveis">⚙ KPIs</button>
+      <button class="btn-s" id="btnFullscreen" onclick="toggleFullscreen()" title="Alternar tela cheia">⛶ Tela Cheia</button>
       <button class="btn-s" onclick="exportHTML()">⬇ Exportar</button>
       <button class="btn-s" onclick="document.getElementById('fi2').click()">↺ Novo arquivo<input type="file" id="fi2" accept=".csv,.txt" style="display:none"></button>
     </div>
@@ -1442,7 +1443,7 @@ const __VERSION__ = "1.6";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "28/05/2026 às 12:22";
+const __LAST_UPDATE__ = "28/05/2026 às 14:07";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
@@ -3313,6 +3314,72 @@ function priorRenderDetalhe(){
   } else {
     console.warn('[AutoLoad] prioridades.txt não carregado — verifique se o arquivo existe no repositório e o nome está correto (minúsculo).');
   }
+})();
+
+// ─── TELA CHEIA (Fullscreen API — compatível com todos os navegadores) ────────
+function toggleFullscreen(){
+  const el=document.documentElement;
+  const isFullscreen=!!(
+    document.fullscreenElement||
+    document.webkitFullscreenElement||
+    document.mozFullScreenElement||
+    document.msFullscreenElement
+  );
+  if(!isFullscreen){
+    const req=
+      el.requestFullscreen||
+      el.webkitRequestFullscreen||
+      el.mozRequestFullScreen||
+      el.msRequestFullscreen;
+    if(req){
+      req.call(el).catch(()=>{
+        document.body.classList.add('pseudo-fullscreen');
+        _updateFullscreenBtn();
+      });
+    } else {
+      document.body.classList.add('pseudo-fullscreen');
+      _updateFullscreenBtn();
+    }
+  } else {
+    const exit=
+      document.exitFullscreen||
+      document.webkitExitFullscreen||
+      document.mozCancelFullScreen||
+      document.msExitFullscreen;
+    if(exit) exit.call(document);
+    document.body.classList.remove('pseudo-fullscreen');
+  }
+}
+
+function _updateFullscreenBtn(){
+  const btn=document.getElementById('btnFullscreen');
+  if(!btn)return;
+  const isFullscreen=!!(
+    document.fullscreenElement||
+    document.webkitFullscreenElement||
+    document.mozFullScreenElement||
+    document.msFullscreenElement||
+    document.body.classList.contains('pseudo-fullscreen')
+  );
+  btn.textContent=isFullscreen?'✕ Sair Tela Cheia':'⛶ Tela Cheia';
+  btn.title=isFullscreen?'Sair da tela cheia':'Entrar em tela cheia';
+}
+
+['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange'].forEach(ev=>{
+  document.addEventListener(ev,_updateFullscreenBtn);
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='F11'){e.preventDefault();toggleFullscreen();}
+});
+
+(function injectFullscreenCSS(){
+  const style=document.createElement('style');
+  style.textContent=`
+    body.pseudo-fullscreen{position:fixed;inset:0;z-index:99999;overflow-y:auto;margin:0;padding:0;background:var(--bg);}
+    body.pseudo-fullscreen header{position:sticky;top:0;z-index:100000;}
+  `;
+  document.head.appendChild(style);
 })();
 </script>
 </body>
