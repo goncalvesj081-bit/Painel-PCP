@@ -586,8 +586,10 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 .prior-panel-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad-lg);padding:18px 20px}
 .prior-detalhe-bar{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad-lg);padding:16px 20px;margin-bottom:4px}
 .prior-not-found{font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--rad);padding:8px 14px;margin-bottom:6px}
-/* Cabeçalho de tabela ordenável */
-#priorThead th[onclick]:hover{background:rgba(77,159,255,.18)!important;color:var(--acc)!important;}
+/* Cabeçalho de tabela ordenável — hover */
+#priorThead th[data-sort-key]:hover{background:rgba(77,159,255,.18)!important;color:var(--acc)!important;}
+/* Tabela de prioridades — scroll independente do container pai */
+#priorDetalhe .tbl-scroll{max-height:calc(100vh - 340px)}
 /* Card de dia — mesmo estilo do card de carga */
 .prior-dia-card{
   background:var(--bg2);border:2px solid var(--border2);
@@ -1451,11 +1453,11 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 
 <script>
 // ─── VERSÃO ──────────────────────────────────────────────────────────────────
-const __VERSION__ = "1.6";
+const __VERSION__ = "1.7";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "01/06/2026 às 13:09";
+const __LAST_UPDATE__ = "01/06/2026 às 13:17";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
@@ -1674,7 +1676,8 @@ function progItem(it){
   return{done,total,pct,embDone:false};
 }
 
-// ─── ESTADO ───────────────────────────────────────────────────────────────────
+// Set de keys de setores — lookup O(1) usado no sort de prioridades
+const _SETORES_KEYS=new Set(SETORES.map(s=>s.key));
 let ROWS=[],PEDIDOS=[],VIEW='cards';
 let KPI_TOTAL=0,KPI_100=0,KPI_TDONE=0,KPI_TTOTAL=0;
 let KPI_PROD_OK=0,KPI_PROD_PEND=0; // produtos (itens) OK e pendentes
@@ -1720,8 +1723,7 @@ function build(rows,fname,currentFile){
   const cargas=[...new Set(rows.map(r=>r.n).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
   sdBuild('Carga',cargas,c=>'Carga '+c,'Todos os nº carga');
 
-  // Monta índice de datas de carga
-  dcBuildIndex(rows);
+  // (índice hierárquico de datas removido — filtro por range usa parseDateToMs direto)
   // Índice para priorFindPed — evita scan linear em cada chamada
   _priorPedMap=new Map();
   for(const p of PEDIDOS){
@@ -2124,8 +2126,6 @@ function renderTabela(peds,somentePend,qProd){
 
   const rows=slice.map(it=>{
     const{pct:pctItem,done:dItem,total:tItem,embDone:itemEmbDone}=progItem(it);
-
-    // Pills: ícone + data em duas linhas
     const setorCells=SETORES.map(s=>{
       const st=it[s.key];
       const embOverride=itemEmbDone&&s.key!=='emb'&&st.tipo==='pend';
@@ -2718,11 +2718,7 @@ function toggleKpi(){
 const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
 const MESES_NOMES=['Janeiro','Fevereiro','Março','Abril','Maio','Junho',
                    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-// _dcIndex: Map<year, Map<monthIdx, Set<rawDateString>>>
-let _dcIndex=new Map();
-let _dcCompat=null; // Set of available raw dates from other filters
-
-// Meses PT incluindo abreviações alternativas
+// MESES_PT used by dcParseDate for date range filter
 const MESES_PT={
   jan:0,fev:1,mar:2,abr:3,mai:4,jun:5,
   jul:6,ago:7,set:8,out:9,nov:10,dez:11,
@@ -2778,29 +2774,7 @@ function formatCargaNum(n){
 
 function formatCargaDate(raw){return raw||'';}
 
-function dcBuildIndex(rows){
-  _dcIndex.clear();
-  for(const r of rows){
-    const parsed=dcParseDate(r.carga);
-    if(!parsed)continue;
-    const yr=parsed.year??0;
-    const mo=parsed.month;
-    if(!_dcIndex.has(yr))_dcIndex.set(yr,new Map());
-    const byMonth=_dcIndex.get(yr);
-    if(!byMonth.has(mo))byMonth.set(mo,new Set());
-    byMonth.get(mo).add(parsed.raw);
-  }
-}
-
-// ─── dc* functions — stubs (hierarchical date picker removed) ─────────────────
-function dcUpdateCompat(){}
-function dcRender(){}
-function dcDrillYear(){}
-function dcDrillMonth(){}
-function dcBack(){}
-function dcToggleAll(){}
-function dcClear(){}
-function dcUpdateUI(){}
+// ─── dc* functions removed (hierarchical date picker) — filtro usa parseDateToMs ─
 
 // ─── KPI VISIBILITY ──────────────────────────────────────────────────────────
 const KPI_VIS_DEFAULTS={
@@ -3126,16 +3100,17 @@ function priorRender(){
 
   // Montar cards de dias
   grid.innerHTML=_priorGrupos.map((grupo,idx)=>{
-    // Calcular % médio dos pedidos do grupo
-    let totalPct=0,found=0,totalItens=0,doneItens=0;
+    // % médio real por item (consistente com o resto do painel)
+    let sumPct=0,countFound=0;
     for(const{num} of grupo.pedidos){
       const p=priorFindPed(num);
       if(!p)continue;
-      found++;
-      const{done,total}=prog(p);
-      totalItens+=total;doneItens+=done;
+      for(const it of p.itens){
+        sumPct+=progItem(it).pct;
+        countFound++;
+      }
     }
-    const pct=totalItens?Math.round(doneItens/totalItens*100):0;
+    const pct=countFound?Math.round(sumPct/countFound):0;
     const pctColor=pct===100?'var(--green)':pct>0?'var(--acc)':'var(--red)';
     const isSel=_priorDiaSel===idx;
     const naoEncontradosNums=grupo.pedidos.filter(({num})=>!priorFindPed(num)).map(({num})=>num);
@@ -3231,7 +3206,7 @@ function priorRenderDetalhe(){
       else if(sortKey==='item'){va=a.item||'';vb=b.item||'';}
       else if(sortKey==='qtd'){va=parseFloat(a.qtd)||0;vb=parseFloat(b.qtd)||0;return sortDir==='asc'?va-vb:vb-va;}
       else if(sortKey==='pct_item'){va=progItem(a).pct;vb=progItem(b).pct;return sortDir==='asc'?va-vb:vb-va;}
-      else if(SETORES.find(s=>s.key===sortKey)){
+      else if(_SETORES_KEYS.has(sortKey)){
         // Setor: pendente vem antes de done/skip ao ordenar asc
         const rank=t=>t==='pend'?0:t==='done'?1:2;
         va=rank((a[sortKey]||{}).tipo);vb=rank((b[sortKey]||{}).tipo);
@@ -3350,17 +3325,11 @@ function priorRenderDetalhe(){
   const csvUrl  = base + 'dados.csv';
   const txtUrl  = base + 'prioridades.txt';
 
-  console.log('[AutoLoad] CSV URL:', csvUrl);
-  console.log('[AutoLoad] TXT URL:', txtUrl);
-
-  // Dispara os dois fetches em paralelo (só o fetch de rede, não o processamento)
+  // Dispara os dois fetches em paralelo
   const [csvRes, txtRes] = await Promise.allSettled([
     fetch(csvUrl, { cache: 'no-store' }),
     fetch(txtUrl, { cache: 'no-store' }),
   ]);
-
-  console.log('[AutoLoad] CSV status:', csvRes.status, csvRes.value?.status, csvRes.value?.ok);
-  console.log('[AutoLoad] TXT status:', txtRes.status, txtRes.value?.status, txtRes.value?.ok);
 
   // ── CSV primeiro — PEDIDOS precisa estar populado antes do TXT ───────────
   const csvOk = csvRes.status === 'fulfilled' && csvRes.value.ok;
@@ -3379,16 +3348,12 @@ function priorRenderDetalhe(){
 
   // ── TXT de prioridades — carregado APÓS o build() para cruzar com PEDIDOS ─
   const txtOk = txtRes.status === 'fulfilled' && txtRes.value.ok;
-  console.log('[AutoLoad] txtOk:', txtOk, '| PEDIDOS após build:', typeof PEDIDOS !== 'undefined' ? PEDIDOS.length : 'undefined');
   if(txtOk){
     try{
       const texto = await txtRes.value.text();
-      console.log('[AutoLoad] TXT carregado, primeiros 200 chars:', texto.slice(0,200));
       priorCarregarTexto(texto);
       if(typeof VIEW !== 'undefined' && VIEW === 'prioridades') priorRender();
     }catch(e){ console.error('[AutoLoad] Erro TXT:', e); }
-  } else {
-    console.warn('[AutoLoad] prioridades.txt não carregado — verifique se o arquivo existe no repositório e o nome está correto (minúsculo).');
   }
 })();
 
