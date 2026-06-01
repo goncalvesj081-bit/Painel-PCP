@@ -586,6 +586,8 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 .prior-panel-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:8px;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad-lg);padding:18px 20px}
 .prior-detalhe-bar{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rad-lg);padding:16px 20px;margin-bottom:4px}
 .prior-not-found{font-size:13px;color:var(--text3);font-family:'JetBrains Mono',monospace;background:var(--bg3);border:1px dashed var(--border2);border-radius:var(--rad);padding:8px 14px;margin-bottom:6px}
+/* Cabeçalho de tabela ordenável */
+#priorThead th[onclick]:hover{background:rgba(77,159,255,.18)!important;color:var(--acc)!important;}
 /* Card de dia — mesmo estilo do card de carga */
 .prior-dia-card{
   background:var(--bg2);border:2px solid var(--border2);
@@ -1443,7 +1445,7 @@ const __VERSION__ = "1.6";
 
 // ─── DATA DE ATUALIZAÇÃO — injetada automaticamente pelo script Python ───────
 // NÃO edite esta linha manualmente. Formato: "DD/MM/YYYY às HH:MM"
-const __LAST_UPDATE__ = "01/06/2026 às 12:59";
+const __LAST_UPDATE__ = "01/06/2026 às 13:02";
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Exibe versão e data assim que o script carrega (sem esperar DOMContentLoaded)
@@ -2985,6 +2987,16 @@ let _priorGrupos=[]; // [{titulo, pedidos:[{num,extra}]}]
 let _priorDiaSel=null; // índice do grupo selecionado
 let _priorSoPend=false; // toggle só pendentes
 let _priorNumsSet=new Set(); // números de todos os pedidos priorizados (para estrela)
+let _priorSort={key:null,dir:'asc'}; // ordenação da tabela de detalhe
+
+function priorSortBy(key){
+  if(_priorSort.key===key){
+    _priorSort.dir=_priorSort.dir==='asc'?'desc':'asc';
+  } else {
+    _priorSort={key,dir:'asc'};
+  }
+  priorRenderDetalhe();
+}
 
 function priorCarregarTexto(texto){
   const linhas=texto.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0);
@@ -3139,6 +3151,7 @@ function priorRender(){
 
 function priorSelDia(idx){
   _priorDiaSel=(_priorDiaSel===idx)?null:idx;
+  _priorSort={key:null,dir:'asc'}; // reset ordenação ao trocar de dia
   // Atualizar seleção visual nos cards
   document.querySelectorAll('.prior-dia-card').forEach((el,i)=>el.classList.toggle('selected',i===_priorDiaSel));
   const detalhe=document.getElementById('priorDetalhe');
@@ -3196,21 +3209,74 @@ function priorRenderDetalhe(){
     itensFiltrados=itensFiltrados.filter(it=>progItem(it).pct<100);
   }
 
+  // ─── Ordenação por coluna clicável ───────────────────────────────────────────
+  const sortKey=_priorSort.key;
+  const sortDir=_priorSort.dir; // 'asc'|'desc'
+  if(sortKey){
+    itensFiltrados=[...itensFiltrados].sort((a,b)=>{
+      let va,vb;
+      if(sortKey==='pedido'){va=a.pedido||'';vb=b.pedido||'';}
+      else if(sortKey==='n'){va=a.n||'';vb=b.n||'';}
+      else if(sortKey==='kanban'){va=a._ped?.carga||'';vb=b._ped?.carga||'';}
+      else if(sortKey==='item'){va=a.item||'';vb=b.item||'';}
+      else if(sortKey==='qtd'){va=parseFloat(a.qtd)||0;vb=parseFloat(b.qtd)||0;return sortDir==='asc'?va-vb:vb-va;}
+      else if(sortKey==='pct_item'){va=progItem(a).pct;vb=progItem(b).pct;return sortDir==='asc'?va-vb:vb-va;}
+      else if(SETORES.find(s=>s.key===sortKey)){
+        // Setor: pendente vem antes de done/skip ao ordenar asc
+        const rank=t=>t==='pend'?0:t==='done'?1:2;
+        va=rank((a[sortKey]||{}).tipo);vb=rank((b[sortKey]||{}).tipo);
+        return sortDir==='asc'?va-vb:vb-va;
+      }
+      else{va='';vb='';}
+      const cmp=(va||'').localeCompare(vb||'','pt-BR',{numeric:true});
+      return sortDir==='asc'?cmp:-cmp;
+    });
+  }
+
   // Montar cabeçalho da tabela — PEDIDO, Nº CARGA, KANBAN, ITEM, QTD, setores, %
   const thCols=[
-    {key:'pedido',lbl:'Pedido'},
-    {key:'n',lbl:'Nº Carga'},
-    {key:'kanban',lbl:'Kanban'},
-    {key:'item',lbl:'Item'},
-    {key:'qtd',lbl:'Qtd'},
-    ...SETORES.map(s=>({key:s.key,lbl:s.label,setor:true})),
-    {key:'pct_item',lbl:'%'},
+    {key:'pedido',lbl:'Pedido',sortable:true},
+    {key:'n',lbl:'Nº Carga',sortable:true},
+    {key:'kanban',lbl:'Dt. Carga',sortable:true},
+    {key:'item',lbl:'Item',sortable:true},
+    {key:'qtd',lbl:'Qtd',sortable:true},
+    ...SETORES.map(s=>({key:s.key,lbl:s.label,setor:true,sortable:true})),
+    {key:'pct_item',lbl:'%',sortable:true},
   ];
-  document.getElementById('priorThead').innerHTML=thCols.map(c=>{
-    const cls=c.setor?'th-setor':'';
-    const ativo=(c.setor&&c.key===setorKey)?'style="background:rgba(245,166,35,.15);color:var(--amber)"':'';
-    return`<th class="${cls}" ${ativo}>${c.lbl}</th>`;
-  }).join('');
+
+  const thead=document.getElementById('priorThead');
+  thead.innerHTML='';
+  const tr=document.createElement('tr');
+  thCols.forEach(c=>{
+    const th=document.createElement('th');
+    if(c.setor) th.className='th-setor';
+    const isSort=c.key===sortKey;
+    const arrow=isSort?(sortDir==='asc'?' ▲':' ▼'):'';
+    th.textContent=c.lbl+arrow;
+    if(c.setor&&c.key===setorKey){
+      th.style.background='rgba(245,166,35,.15)';
+      th.style.color='var(--amber)';
+    } else if(isSort){
+      th.style.background='rgba(77,159,255,.12)';
+      th.style.color='var(--acc)';
+    }
+    if(c.sortable){
+      th.style.cursor='pointer';
+      th.style.userSelect='none';
+      th.style.whiteSpace='nowrap';
+      th.dataset.sortKey=c.key;
+    }
+    tr.appendChild(th);
+  });
+  thead.appendChild(tr);
+
+  // Event delegation — um único listener no thead, não perde com re-render
+  thead.onclick=null;
+  thead.onclick=function(e){
+    const th=e.target.closest('th[data-sort-key]');
+    if(!th) return;
+    priorSortBy(th.dataset.sortKey);
+  };
 
   if(!itensFiltrados.length){
     document.getElementById('priorTbody').innerHTML=
@@ -3224,7 +3290,7 @@ function priorRenderDetalhe(){
     const{pct:pctItem,embDone:itemEmbDone}=progItem(it);
     const pctColor=pctItem===100?'var(--green)':pctItem>0?'var(--acc)':'var(--red)';
     const qtdDisplay=(it.qtd||'').replace(/\.0+$/,'');
-    const kanban=it.kanban||it._ped?.kanban||'—';
+    const dtCarga=it._ped?.carga||'—';
 
     const setorCells=SETORES.map(s=>{
       const st=it[s.key];
@@ -3247,7 +3313,7 @@ function priorRenderDetalhe(){
     return`<tr style="cursor:pointer" onclick="mOpen('${(it.pedido||'').replace(/'/g,"\\'")}')">
       <td class="tcell-ped" style="font-size:15px">${it.pedido||'—'} ⭐</td>
       <td class="tcell-gray"><div style="font-weight:700;font-size:14px">${it.n||'—'}</div>${it._extra?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${it._extra}</div>`:''}</td>
-      <td class="tcell-gray" style="font-size:13px;font-family:'JetBrains Mono',monospace;white-space:nowrap">${kanban}</td>
+      <td class="tcell-gray" style="font-size:13px;font-family:'JetBrains Mono',monospace;white-space:nowrap">${dtCarga}</td>
       <td class="tcell-item" style="max-width:240px;white-space:normal;word-break:break-word">
         <div style="font-size:14px;font-weight:700">${it.item||'—'}</div>
         ${it.comp?`<div style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;margin-top:3px">${it.comp}</div>`:''}
