@@ -55,3 +55,57 @@ Pedidos de sexta feira 12/06
 
 116025 carga 3289
 115890 carga 3314
+
+
+Pedidos de amanhã 11/06
+
+115217 carga 3315
+114956 carga 3317
+
+Pedidos de sexta feira 12/06
+
+113039 carga 3315
+115794 carga 3315
+115854 carga 3315
+115338 carga 3317
+115686 carga 3317
+115763 carga 3317
+116136 carga 3314
+
+Pedidos de segunda feira 15/06
+
+115246 carga 3322
+115291 carga 3322
+115325 carga 3322
+115344 carga 3322
+115491 carga 3322
+115860 carga 3322
+114259 carga 3315
+114429 carga 3315
+114513 carga 3315
+114403 carga 3317
+114488 carga 3317
+114765 carga 3317
+114361 carga 3317
+113788 carga 3317
+115823 carga 3314
+
+Pedidos de terça feira 16/06
+
+115687 carga 3317
+114724 carga 3315
+115484 carga 3322
+115613 carga 3322
+115532 carga 3322
+115388 carga 3317
+
+Pedidos de quarta feira 17/06
+
+115389
+
+Pedidos de sexta feira 19/06
+
+115062 carga 3315
+113922 carga 3317
+115780 carga 3312
+116162 carga 3339
