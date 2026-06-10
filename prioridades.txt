@@ -50,20 +50,13 @@ Pedidos de quarta feira 11/06
 115244 carga 3314
 115076 carga 3314
 115197 carga 3314
-
-Pedidos de sexta feira 12/06
-
-116025 carga 3289
-115890 carga 3314
-
-
-Pedidos de amanhã 11/06
-
 115217 carga 3315
 114956 carga 3317
 
 Pedidos de sexta feira 12/06
 
+116025 carga 3289
+115890 carga 3314
 113039 carga 3315
 115794 carga 3315
 115854 carga 3315
