@@ -1447,6 +1447,13 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
       <div id="printSetorList" style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>
     </div>
 
+    <div style="margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text1)">
+        <input type="checkbox" id="printSoPend" style="width:15px;height:15px;cursor:pointer;accent-color:var(--acc)">
+        ⏳ Somente pendências
+      </label>
+    </div>
+
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="printModalClose(null,true)" style="padding:9px 20px;border-radius:7px;border:1px solid var(--border2);background:var(--bg4);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer">Cancelar</button>
       <button onclick="printModalConfirm()" style="padding:9px 20px;border-radius:7px;border:none;background:var(--acc);color:#fff;font-size:13px;font-weight:700;cursor:pointer">🖨️ Imprimir</button>
@@ -1470,7 +1477,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 <script>
 const __VERSION__ = "1.8";
 
-const __LAST_UPDATE__ = "16/06/2026 às 08:23";
+const __LAST_UPDATE__ = "16/06/2026 às 08:29";
 
 window.addEventListener('load', function(){
   const verEl = document.getElementById('appVersion');
@@ -3211,9 +3218,10 @@ function priorRenderDetalhe(){
   const csvUrl  = base + 'dados.csv';
   const txtUrl  = base + 'prioridades.txt';
 
+  const _v = '?v=' + Date.now();
   const [csvRes, txtRes] = await Promise.allSettled([
-    fetch(csvUrl, { cache: 'no-store' }),
-    fetch(txtUrl, { cache: 'no-store' }),
+    fetch(csvUrl + _v, { cache: 'no-store' }),
+    fetch(txtUrl + _v, { cache: 'no-store' }),
   ]);
 
   const csvOk = csvRes.status === 'fulfilled' && csvRes.value.ok;
@@ -3449,6 +3457,8 @@ function printCargaSetores(setoresSelecionados){
   const carga=cargaMap.get(_cargaSelected);
   if(!carga)return;
 
+  const _printSoPend=document.getElementById('printSoPend')?.checked||false;
+
   const allItens=carga.peds.flatMap(p=>
     p.itens.filter(it=>formatCargaNum(it.n||'')===carga.n&&(it.carga||p.carga||'')===carga.date)
       .map(it=>({...it,_ped:p}))
@@ -3561,7 +3571,9 @@ function printCargaSetores(setoresSelecionados){
     if(!setor)continue;
     const itensDoSetor=allItens.filter(it=>{
       const st=it[setor.key];
-      return st&&st.tipo!=='skip';
+      if(!st||st.tipo==='skip')return false;
+      if(_printSoPend&&st.tipo!=='pend')return false;
+      return true;
     });
     if(!itensDoSetor.length)continue;
     // chunk into pages
