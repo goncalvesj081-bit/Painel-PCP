@@ -15,23 +15,6 @@ Pedidos de amanhã 09/06
 115236 carga 3289
 115077 carga 3289
 
-Pedidos de quarta feira 10/06
-
-115055 carga 3314
-114609 carga 3314
-114440 carga 3314
-115260 carga 3314
-115506 carga 3314
-115744 carga 3314
-115200 carga 3314
-114433 carga 3289
-114191 carga 3289
-114998 carga 3289
-114738 carga 3289
-115006 carga 3289
-115078 carga 3289
-115252 carga 3289
-
 Pedidos de quarta feira 11/06
 
 115000 carga 3314
