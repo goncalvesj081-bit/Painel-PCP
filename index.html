@@ -1477,7 +1477,7 @@ tbody tr:hover td.td-setor{background:rgba(77,159,255,.09)!important}
 <script>
 const __VERSION__ = "1.8";
 
-const __LAST_UPDATE__ = "16/06/2026 às 08:29";
+const __LAST_UPDATE__ = "16/06/2026 às 08:57";
 
 window.addEventListener('load', function(){
   const verEl = document.getElementById('appVersion');
@@ -2268,6 +2268,7 @@ function setView(v){
 }
 
 let _cargaSelected=null;
+let _cargaMapGlobal=new Map();
 let _cargaSoPend=false;
 
 function cargaTogglePend(){
@@ -2319,6 +2320,7 @@ function renderCargaPanel(filteredPeds){
       }
     }
   }
+  _cargaMapGlobal=cargaMap;
   const _cargaPendAtivo=_cargaSoPend||(_sd.Status.values.has('pend')&&!_sd.Status.values.has('ok'));
 
   const _cargaBuscaTxt=(document.getElementById('busca').value||'').toLowerCase().trim();
@@ -3408,61 +3410,32 @@ function printModalConfirm(){
     .filter(s=>s.copies>0);
 
   if(!selecionados.length){ alert('Selecione pelo menos um setor.'); return; }
+  const _soPend = document.getElementById('printSoPend')?.checked||false;
   document.getElementById('printModalBg').style.display = 'none';
   if(_printModalCtx === 'prioridades'){
-    printPrioridades(selecionados);
+    printPrioridades(selecionados, _soPend);
   } else {
-    printCargaSetores(selecionados);
+    printCargaSetores(selecionados, _soPend);
   }
 }
 
-function printCargaSetores(setoresSelecionados){
+function printCargaSetores(setoresSelecionados, _soPend){
   if(!_cargaSelected)return;
 
-  const fPedido=_sd.Pedido.values,fCls=_sd.Class.values,fCliente=_sd.Cliente.values;
-  const fSt=_sd.Status.values,fCargas=_sd.Carga.values;
-  const ini=parseDateToMs(document.getElementById('dataCargaInicio')?.value||'');
-  const fim=parseDateToMs(document.getElementById('dataCargaFim')?.value||'');
-  const q=(document.getElementById('busca').value||'').toLowerCase().trim();
-  const filteredPeds=PEDIDOS.filter(p=>{
-    if(q&&!p.pedido.toLowerCase().includes(q)&&!p.itens.some(it=>(it.n||'').toLowerCase().includes(q)))return false;
-    if(fPedido.size>0&&!fPedido.has(p.pedido))return false;
-    if(fCls.size>0&&!fCls.has(p.class_))return false;
-    if(fCliente.size>0&&!fCliente.has(p.cliente))return false;
-    if(fSt.size>0){const{pct}=prog(p);const ok=pct===100;if(fSt.has('ok')&&!fSt.has('pend')&&!ok)return false;if(fSt.has('pend')&&!fSt.has('ok')&&ok)return false;}
-    if(fCargas.size>0&&!p.itens.some(it=>fCargas.has(formatCargaNum(it.n||''))))return false;
-    if(!matchDataCargaFn(p,ini,fim))return false;
-    return true;
-  });
-
-  const cargaMap=new Map();
-  for(const p of filteredPeds){
-    const itemGroups=new Map();
-    for(const it of p.itens){
-      const num=it.n||'';if(!num)continue;
-      const dateVal=it.carga||p.carga||'';
-      const numBase=formatCargaNum(num);
-      const key=numBase+'||'+(dateVal||'');
-      if(!itemGroups.has(key))itemGroups.set(key,{num,numBase,dateVal,itens:[]});
-      itemGroups.get(key).itens.push(it);
-    }
-    for(const[key,{num,numBase,dateVal,itens:grpItens}] of itemGroups){
-      if(!cargaMap.has(key))cargaMap.set(key,{key,n:numBase,date:dateVal,peds:[],totalItens:0,doneItens:0});
-      const entry=cargaMap.get(key);
-      if(!entry.peds.includes(p))entry.peds.push(p);
-      for(const it of grpItens){entry.totalItens++;if(progItem(it).pct===100)entry.doneItens++;}
-    }
-  }
-
-  const carga=cargaMap.get(_cargaSelected);
+  const carga=_cargaMapGlobal.get(_cargaSelected);
   if(!carga)return;
 
-  const _printSoPend=document.getElementById('printSoPend')?.checked||false;
+  const _printSoPend=!!_soPend;
 
-  const allItens=carga.peds.flatMap(p=>
-    p.itens.filter(it=>formatCargaNum(it.n||'')===carga.n&&(it.carga||p.carga||'')===carga.date)
-      .map(it=>({...it,_ped:p}))
-  );
+  // Busca itens diretamente de PEDIDOS usando n e date da carga selecionada
+  const allItens=[];
+  for(const p of PEDIDOS){
+    for(const it of p.itens){
+      if(formatCargaNum(it.n||'')===carga.n&&(it.carga||p.carga||'')===carga.date){
+        allItens.push({...it,_ped:p});
+      }
+    }
+  }
 
   const now=new Date();
   const hora=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -3572,7 +3545,12 @@ function printCargaSetores(setoresSelecionados){
     const itensDoSetor=allItens.filter(it=>{
       const st=it[setor.key];
       if(!st||st.tipo==='skip')return false;
-      if(_printSoPend&&st.tipo!=='pend')return false;
+      if(_printSoPend){
+        // Se embalagem concluída, item não é mais pendente em nenhum setor
+        const embDone=it.emb&&it.emb.tipo==='done'&&!it.emb.parcial;
+        if(embDone)return false;
+        if(st.tipo!=='pend')return false;
+      }
       return true;
     });
     if(!itensDoSetor.length)continue;
@@ -3590,6 +3568,8 @@ function printCargaSetores(setoresSelecionados){
       });
     }
   }
+
+  if(!paginas){ alert(_printSoPend?'Nenhuma pendência encontrada para o(s) setor(es) selecionado(s).':'Nenhum item encontrado para os setores selecionados.'); return; }
 
   const html=`<!DOCTYPE html>
 <html lang="pt-BR">
@@ -3665,7 +3645,7 @@ function printCargaSetores(setoresSelecionados){
   win.document.close();
 }
 
-function printPrioridades(setoresSelecionados){
+function printPrioridades(setoresSelecionados, _soPend){
   // Determina quais grupos imprimir
   const gruposParaImprimir = (_priorDiaSel !== null && _priorGrupos[_priorDiaSel])
     ? [{ grupo: _priorGrupos[_priorDiaSel], idx: _priorDiaSel }]
@@ -3790,6 +3770,7 @@ function printPrioridades(setoresSelecionados){
     if(!setor)continue;
 
     // Coleta todos os itens dos grupos selecionados para este setor
+    const _printSoPendPrior=!!_soPend;
     let allItensSetor=[];
     for(const {grupo} of gruposParaImprimir){
       for(const {num} of grupo.pedidos){
@@ -3798,6 +3779,11 @@ function printPrioridades(setoresSelecionados){
         for(const it of p.itens){
           const st=it[setor.key];
           if(!st||st.tipo==='skip')continue;
+          if(_printSoPendPrior){
+            const embDone=it.emb&&it.emb.tipo==='done'&&!it.emb.parcial;
+            if(embDone)continue;
+            if(st.tipo!=='pend')continue;
+          }
           allItensSetor.push({...it,_ped:p});
         }
       }
